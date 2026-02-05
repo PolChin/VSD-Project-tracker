@@ -8,16 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Dependencies
-        run: npm ci # หรือ npm install
-        
+        run: npm install  # เพื่อติดตั้งเครื่องมือเช่น Vite
+
       - name: Build Project
-        run: npm run build # คำสั่งนี้จะสร้างโฟลเดอร์ dist หรือ build ออกมา
-        
+        run: npm run build # เพื่อสร้างโฟลเดอร์ 'dist' ขึ้นมา
+
       - name: Deploy to Firebase
-        uses: w9jds/firebase-action@master
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          args: deploy --only hosting
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VSD_PROJECT_TRACKER_6D30C }}
+          channelId: live
+          projectId: vsd-project-tracker-6d30c
+          
