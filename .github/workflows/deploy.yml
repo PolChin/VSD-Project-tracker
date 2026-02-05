@@ -2,12 +2,19 @@ name: Deploy to Firebase Hosting
 on:
   push:
     branches:
-      - main  # หรือ master ตามชื่อ branch ของคุณ
+      - main
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Install Dependencies
+        run: npm ci # หรือ npm install
+        
+      - name: Build Project
+        run: npm run build # คำสั่งนี้จะสร้างโฟลเดอร์ dist หรือ build ออกมา
+        
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
