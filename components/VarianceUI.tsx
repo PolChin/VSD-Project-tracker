@@ -44,7 +44,6 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
         const data = snap.docs.map(d => {
           const docData = d.data({ serverTimestamps: 'estimate' });
           
-          // Sanitize updatedAt to ISO string
           let updatedStr = new Date().toISOString();
           if (docData.updatedAt) {
             if (typeof docData.updatedAt.toDate === 'function') {
@@ -56,10 +55,32 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
             }
           }
 
+          // Plainify mapping for history to prevent circular errors
           return { 
-            ...docData,
-            id: d.id, 
-            updatedAt: updatedStr
+            id: d.id,
+            projectId: String(docData.projectId || ''),
+            name: String(docData.name || 'Untitled'),
+            leader: String(docData.leader || 'N/A'),
+            department: String(docData.department || 'N/A'),
+            status: String(docData.status || 'Unknown'),
+            progress: Number(docData.progress || 0),
+            updatedAt: updatedStr,
+            description: String(docData.description || ''),
+            tasks: (docData.tasks || []).map((t: any) => ({
+              id: String(t.id),
+              name: String(t.name),
+              description: String(t.description || ''),
+              startDate: String(t.startDate),
+              endDate: String(t.endDate),
+              progress: Number(t.progress || 0),
+              weight: Number(t.weight || 0)
+            })) as Task[],
+            milestones: (docData.milestones || []).map((m: any) => ({
+              id: String(m.id),
+              name: String(m.name),
+              description: String(m.description || ''),
+              date: String(m.date)
+            })) as Milestone[]
           };
         }) as ProjectHistory[];
         

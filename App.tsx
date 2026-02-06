@@ -8,7 +8,7 @@ import {
   onSnapshot, 
   getDocs
 } from './firebase';
-import { Project, MasterData } from './types';
+import { Project, MasterData, Task, Milestone } from './types';
 import LoadingScreen from './components/LoadingScreen';
 import GanttDashboard from './components/GanttDashboard';
 import ProjectList from './components/ProjectList';
@@ -35,11 +35,11 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
-      document.body.classList.remove('light-mode');
+      document.documentElement.classList.remove('light-mode');
       localStorage.setItem('theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      document.body.classList.add('light-mode');
+      document.documentElement.classList.add('light-mode');
       localStorage.setItem('theme', 'light');
     }
   }, [isDark]);
@@ -49,7 +49,7 @@ const App: React.FC = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const projectsData = snapshot.docs.map(doc => {
         const data = doc.data({ serverTimestamps: 'estimate' });
-        // Ensure updatedAt is a plain string, converting from Timestamp if necessary
+        
         let updatedStr = new Date().toISOString();
         if (data.updatedAt) {
           if (typeof data.updatedAt.toDate === 'function') {
@@ -61,12 +61,34 @@ const App: React.FC = () => {
           }
         }
         
+        // Plainify the mapping to avoid circular structure errors from Firebase SDK internals
         return {
-          ...data,
           id: doc.id,
-          updatedAt: updatedStr
+          name: String(data.name || 'Untitled'),
+          leader: String(data.leader || 'N/A'),
+          department: String(data.department || 'N/A'),
+          status: String(data.status || 'Unknown'),
+          progress: Number(data.progress || 0),
+          tasks: (data.tasks || []).map((t: any) => ({
+            id: String(t.id),
+            name: String(t.name),
+            description: String(t.description || ''),
+            startDate: String(t.startDate),
+            endDate: String(t.endDate),
+            progress: Number(t.progress || 0),
+            weight: Number(t.weight || 0)
+          })) as Task[],
+          milestones: (data.milestones || []).map((m: any) => ({
+            id: String(m.id),
+            name: String(m.name),
+            description: String(m.description || ''),
+            date: String(m.date)
+          })) as Milestone[],
+          updatedAt: updatedStr,
+          description: String(data.description || '')
         };
       }) as Project[];
+      
       setProjects(projectsData);
       setLoading(false);
     }, (error: any) => {
@@ -85,8 +107,8 @@ const App: React.FC = () => {
           departments: deptSnap.docs.map(d => (d.data().Name || d.data().name || '').toString()).sort(),
           statuses: statusSnap.docs.map(d => ({
             id: d.id,
-            name: d.data().name,
-            color: d.data().color
+            name: String(d.data().name || ''),
+            color: String(d.data().color || '#94a3b8')
           }))
         });
       } catch (err: any) {
@@ -112,8 +134,8 @@ const App: React.FC = () => {
   const isModalOpen = showAddModal || editingProject !== null;
 
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-4 min-h-screen">
-      <header className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+    <div className="w-full mx-auto px-4 py-4 min-h-screen flex flex-col">
+      <header className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 w-full">
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">
@@ -130,7 +152,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        <nav className="flex bg-indigo-100/50 dark:bg-slate-800/50 p-1 rounded-2xl glass">
+        <nav className="flex bg-indigo-100/50 dark:bg-slate-800/50 p-1 rounded-2xl glass shadow-lg">
           {[
             { id: 'dashboard', icon: LayoutDashboard, label: 'Timeline' },
             { id: 'projects', icon: ListTodo, label: 'Portfolio' },
@@ -139,9 +161,9 @@ const App: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-xl transition-all duration-300 font-bold text-xs ${
+              className={`flex items-center gap-2 px-6 py-2 rounded-xl transition-all duration-300 font-bold text-xs ${
                 activeTab === tab.id 
-                ? 'bg-indigo-600 text-white shadow-md' 
+                ? 'bg-indigo-600 text-white shadow-md scale-105' 
                 : 'text-indigo-900 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700'
               }`}
             >
@@ -152,7 +174,7 @@ const App: React.FC = () => {
         </nav>
       </header>
 
-      <main className="animate-in fade-in duration-500">
+      <main className="flex-grow animate-in fade-in duration-500 w-full">
         {activeTab === 'dashboard' && <GanttDashboard projects={projects} masterData={masterData} />}
         {activeTab === 'projects' && (
           <ProjectList 
@@ -171,7 +193,7 @@ const App: React.FC = () => {
             className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm"
             onClick={handleCloseModal}
           />
-          <div className="relative w-full max-w-6xl max-h-[95vh] overflow-y-auto no-scrollbar">
+          <div className="relative w-full max-w-7xl max-h-[95vh] overflow-y-auto no-scrollbar">
             <button 
               onClick={handleCloseModal}
               className="absolute top-4 right-6 z-[110] p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 rounded-full text-slate-400 dark:text-slate-400 hover:text-rose-500 transition-all shadow-md border dark:border-slate-700"
@@ -187,7 +209,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      <footer className="mt-8 pb-4 text-center text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em]">
+      <footer className="mt-8 pb-4 text-center text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] w-full">
         &copy; 2024 VSD Project summary • Executive Control Panel
       </footer>
     </div>

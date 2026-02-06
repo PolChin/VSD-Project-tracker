@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light-mode">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,17 +24,35 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        /* Base Reset */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        /* Light Mode Styles */
+        html {
+            background: #f0f4ff;
+        }
         body {
             font-family: 'Inter', sans-serif;
             transition: background-color 0.3s ease, color 0.3s ease;
-        }
-        body.light-mode {
             background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+            background-attachment: fixed;
         }
-        body.dark {
-            background: radial-gradient(circle at top left, #1e1b4b 0%, #020617 100%);
+
+        /* Dark Mode Styles - Corrected selector */
+        html.dark {
+            background: #020617;
+        }
+        .dark body {
+            background: radial-gradient(circle at top left, #1b1b4b 0%, #020617 100%);
+            background-attachment: fixed;
             color: #f8fafc;
         }
+
         .glass {
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(12px);
@@ -45,6 +63,8 @@
             background: rgba(15, 23, 42, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+
+        /* Scrollbar Styling */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;

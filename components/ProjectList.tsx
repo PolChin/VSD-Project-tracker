@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Project, MasterData } from '../types';
-import { User, Building2, PlusCircle, Edit3 } from 'lucide-react';
+import { User, Building2, PlusCircle, Edit3, Info, Search, Filter, XCircle } from 'lucide-react';
 
 interface ProjectListProps {
   projects: Project[];
@@ -11,90 +11,255 @@ interface ProjectListProps {
 }
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNew, onEditProject }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({
+    department: '',
+    leader: '',
+    status: ''
+  });
+
+  // Column resizing state - Initialized with requested percentages of a 1200px base
+  // Name: 30% (360), Description: 20% (240), Leader: 10% (120), Dept: 10% (120), Status: 10% (120), Progress: 13% (156), Action: 7% (84)
+  const [colWidths, setColWidths] = useState<Record<string, number>>({
+    name: 360,
+    description: 240,
+    leader: 120,
+    department: 120,
+    status: 120,
+    progress: 156,
+    action: 84
+  });
+
+  const resizingRef = useRef<{ col: string; startX: number; startWidth: number } | null>(null);
+
+  const startResize = (col: string, e: React.MouseEvent) => {
+    resizingRef.current = {
+      col,
+      startX: e.pageX,
+      startWidth: colWidths[col]
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', stopResize);
+    document.body.style.cursor = 'col-resize';
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!resizingRef.current) return;
+    const { col, startX, startWidth } = resizingRef.current;
+    const newWidth = Math.max(startWidth + (e.pageX - startX), 60);
+    setColWidths(prev => ({ ...prev, [col]: newWidth }));
+  };
+
+  const stopResize = () => {
+    resizingRef.current = null;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', stopResize);
+    document.body.style.cursor = 'default';
+  };
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter(p => {
+      const matchSearch = !searchTerm || 
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchDept = !filters.department || p.department === filters.department;
+      const matchLeader = !filters.leader || p.leader === filters.leader;
+      const matchStatus = !filters.status || p.status === filters.status;
+        
+      return matchSearch && matchDept && matchLeader && matchStatus;
+    });
+  }, [projects, searchTerm, filters]);
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setFilters({ department: '', leader: '', status: '' });
+  };
+
   return (
     <div className="space-y-4">
-      {/* Condensed List Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-center bg-white/50 dark:bg-slate-900/50 glass px-5 py-3 rounded-2xl gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Projects Portfolio</h2>
+      {/* Portfolio Header & Action Bar */}
+      <div className="bg-white/50 dark:bg-slate-900/50 glass px-5 py-4 rounded-2xl flex flex-col xl:flex-row gap-4 justify-between items-center shadow-sm">
+        <div className="flex-shrink-0">
+          <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+            Project Portfolio
+            <span className="text-[9px] bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-md font-black">
+              {filteredProjects.length} NODES
+            </span>
+          </h2>
         </div>
-        <button 
-          onClick={onAddNew}
-          className="flex items-center gap-1.5 px-5 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all font-black text-[10px] shadow-lg shadow-indigo-100 dark:shadow-none uppercase tracking-widest"
-        >
-          <PlusCircle size={16} />
-          NEW PROJECT
-        </button>
+
+        {/* Search & Filters Container */}
+        <div className="flex flex-wrap items-center gap-3 flex-grow justify-end w-full xl:w-auto">
+          {/* Search Bar */}
+          <div className="relative group flex-grow max-w-md">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+            <input 
+              type="text"
+              placeholder="Search projects..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all shadow-inner"
+            />
+          </div>
+
+          {/* Filters Group */}
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div className="flex items-center gap-2 px-2 border-r border-slate-300 dark:border-slate-700">
+              <Filter size={12} className="text-slate-400" />
+            </div>
+            <select 
+              value={filters.department}
+              onChange={(e) => setFilters({...filters, department: e.target.value})}
+              className="bg-transparent border-none text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 cursor-pointer outline-none min-w-[100px]"
+            >
+              <option value="" className="dark:bg-slate-800">All Dept</option>
+              {masterData.departments.map(d => <option key={d} value={d} className="dark:bg-slate-800">{d}</option>)}
+            </select>
+            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
+            <select 
+              value={filters.leader}
+              onChange={(e) => setFilters({...filters, leader: e.target.value})}
+              className="bg-transparent border-none text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 cursor-pointer outline-none min-w-[100px]"
+            >
+              <option value="" className="dark:bg-slate-800">All Leaders</option>
+              {masterData.leaders.map(l => <option key={l} value={l} className="dark:bg-slate-800">{l}</option>)}
+            </select>
+            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
+            <select 
+              value={filters.status}
+              onChange={(e) => setFilters({...filters, status: e.target.value})}
+              className="bg-transparent border-none text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 cursor-pointer outline-none min-w-[100px]"
+            >
+              <option value="" className="dark:bg-slate-800">All Status</option>
+              {masterData.statuses.map(s => <option key={s.id} value={s.name} className="dark:bg-slate-800">{s.name}</option>)}
+            </select>
+
+            {(filters.department || filters.leader || filters.status || searchTerm) && (
+              <button 
+                onClick={clearFilters}
+                className="ml-1 p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 rounded-lg transition-all"
+                title="Clear Filters"
+              >
+                <XCircle size={14} />
+              </button>
+            )}
+          </div>
+
+          <button 
+            onClick={onAddNew}
+            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all font-black text-[10px] shadow-lg shadow-indigo-100 dark:shadow-none uppercase tracking-widest flex-shrink-0 active:scale-95"
+          >
+            <PlusCircle size={16} />
+            CREATE NEW
+          </button>
+        </div>
       </div>
 
-      {/* Condensed Project Table */}
-      <div className="bg-white/80 dark:bg-slate-900/80 glass rounded-2xl shadow-lg overflow-hidden border border-white/40 dark:border-slate-800">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+      {/* Expanded Project Table with Resizable Columns */}
+      <div className="bg-white/80 dark:bg-slate-900/80 glass rounded-3xl shadow-xl overflow-hidden border border-white/40 dark:border-slate-800 relative w-full">
+        <div className="overflow-x-auto no-scrollbar">
+          <table className="w-full text-left border-collapse table-fixed" style={{ width: 'auto', minWidth: '100%' }}>
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-                <th className="px-5 py-3 text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Project</th>
-                <th className="px-4 py-3 text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Leader</th>
-                <th className="px-4 py-3 text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest text-center">Status</th>
-                <th className="px-4 py-3 text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Progress</th>
-                <th className="px-6 py-3 text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest text-right">Action</th>
+              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 select-none">
+                {[
+                  { key: 'name', label: 'Project Name' },
+                  { key: 'description', label: 'Description' },
+                  { key: 'leader', label: 'Leader' },
+                  { key: 'department', label: 'Department' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'progress', label: 'Progress' },
+                  { key: 'action', label: 'Action' }
+                ].map((col) => (
+                  <th 
+                    key={col.key} 
+                    className="relative group px-5 py-3.5 text-[11px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest transition-colors hover:text-indigo-500"
+                    style={{ width: `${colWidths[col.key]}px` }}
+                  >
+                    <div className="truncate">{col.label}</div>
+                    {/* Resizing Handle */}
+                    {col.key !== 'action' && (
+                      <div 
+                        onMouseDown={(e) => startResize(col.key, e)}
+                        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize group-hover:bg-indigo-500/20 active:bg-indigo-500 transition-all z-10"
+                      />
+                    )}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-              {projects?.map((project) => {
+              {filteredProjects.map((project) => {
                 const status = masterData.statuses.find(s => s.name === project?.status);
                 
                 return (
                   <tr key={project.id} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20 transition-colors group">
-                    <td className="px-5 py-3 cursor-pointer" onClick={() => onEditProject(project)}>
-                      <div className="flex flex-col min-w-[200px]">
-                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors leading-tight">
-                          {project?.name || 'Untitled'}
-                        </span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1 mt-0.5 font-medium">
-                          {project?.description || 'No description.'}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
-                          <User size={12} className="text-slate-300 dark:text-slate-600" />
-                          <span className="text-[10px] font-bold">{project?.leader || 'N/A'}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500">
-                          <Building2 size={12} className="text-slate-300 dark:text-slate-600" />
-                          <span className="text-[9px] font-medium tracking-tight uppercase">{project?.department || 'General'}</span>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3 text-center">
-                      <span 
-                        className="inline-block px-3 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider text-white shadow-sm"
-                        style={{ backgroundColor: status?.color || '#94a3b8' }}
-                      >
-                        {project?.status || 'Unknown'}
+                    {/* Project Name */}
+                    <td className="px-5 py-3.5 align-middle">
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors block truncate">
+                        {project?.name || 'Untitled'}
                       </span>
                     </td>
 
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3 w-32">
-                        <div className="flex-grow h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700">
-                          <div 
-                            className="h-full bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-1000 ease-out"
-                            style={{ width: `${project?.progress || 0}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 min-w-[24px]">{project?.progress || 0}%</span>
+                    {/* Description */}
+                    <td className="px-4 py-3.5 align-middle">
+                      <div className="flex items-center gap-2">
+                        <Info size={12} className="text-slate-300 dark:text-slate-600 flex-shrink-0" />
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 font-medium">
+                          {project?.description || 'No description provided.'}
+                        </span>
                       </div>
                     </td>
 
-                    <td className="px-6 py-3 text-right">
+                    {/* Leader */}
+                    <td className="px-4 py-3.5 align-middle">
+                      <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+                        <User size={12} className="text-indigo-400 dark:text-indigo-500 flex-shrink-0" />
+                        <span className="text-[11px] font-bold truncate">{project?.leader || 'N/A'}</span>
+                      </div>
+                    </td>
+
+                    {/* Department */}
+                    <td className="px-4 py-3.5 text-center align-middle">
+                      <div className="inline-flex items-center gap-1 px-3 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
+                        <Building2 size={10} className="text-slate-400 dark:text-slate-500" />
+                        <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                          {project?.department || 'GENERAL'}
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3.5 text-center align-middle">
+                      <span 
+                        className="inline-block px-3 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider text-white shadow-sm min-w-[90px]"
+                        style={{ backgroundColor: status?.color || '#94a3b8' }}
+                      >
+                        {project?.status || 'UNKNOWN'}
+                      </span>
+                    </td>
+
+                    {/* Progress */}
+                    <td className="px-4 py-3.5 align-middle">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-grow h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
+                          <div 
+                            className="h-full bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(79,70,229,0.3)]"
+                            style={{ width: `${project?.progress || 0}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 min-w-[32px] text-right">
+                          {project?.progress || 0}%
+                        </span>
+                      </div>
+                    </td>
+
+                    {/* Action */}
+                    <td className="px-6 py-3.5 text-right align-middle">
                       <button 
                         onClick={() => onEditProject(project)}
-                        className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all"
+                        className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all shadow-sm active:scale-90"
+                        title="Edit Project"
                       >
                         <Edit3 size={16} />
                       </button>
@@ -102,10 +267,15 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                   </tr>
                 );
               })}
-              {projects.length === 0 && (
+              {filteredProjects.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-8 py-10 text-center text-slate-400 dark:text-slate-600 text-xs font-bold tracking-widest uppercase">
-                    Portfolio is empty.
+                  <td colSpan={7} className="px-8 py-16 text-center">
+                    <div className="flex flex-col items-center gap-3 opacity-30">
+                      <Search size={32} className="text-slate-400" />
+                      <p className="text-xs font-black tracking-[0.3em] uppercase text-slate-500">
+                        No matches found in portfolio
+                      </p>
+                    </div>
                   </td>
                 </tr>
               )}

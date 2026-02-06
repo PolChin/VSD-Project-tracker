@@ -17,7 +17,9 @@ import {
   FileDown,
   FileSpreadsheet,
   Calendar,
-  X
+  X,
+  Plus,
+  Minus
 } from 'lucide-react';
 
 interface GanttDashboardProps {
@@ -29,6 +31,7 @@ type ViewMode = 'week' | 'month' | 'quarter';
 
 const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [zoomScale, setZoomScale] = useState<number>(1);
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   const [filters, setFilters] = useState({
     department: '',
@@ -60,14 +63,16 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
   const PROJECT_ROW_HEIGHT = 54;
   const TASK_ROW_HEIGHT = 32;
 
+  const baseTimelineWidth = viewMode === 'week' ? 5500 : viewMode === 'month' ? 2800 : 1800;
+  const timelineWidth = baseTimelineWidth * zoomScale;
+
   useEffect(() => {
     if (mainScrollContainerRef.current) {
       const container = mainScrollContainerRef.current;
-      const timelineWidth = viewMode === 'week' ? 5500 : viewMode === 'month' ? 2800 : 1800;
       const todayPos = ((now.getTime() - startDate) / totalDuration) * timelineWidth;
       container.scrollLeft = todayPos - container.clientWidth / 3;
     }
-  }, [viewMode, startDate, totalDuration]);
+  }, [viewMode, zoomScale, startDate, totalDuration]);
 
   const toggleProject = (id: string) => {
     setExpandedProjects(prev => ({ ...prev, [id]: !prev[id] }));
@@ -121,22 +126,22 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
 
           return (
             <div key={year} style={{ width: `${yearWidth}%` }} className="border-r border-slate-200 dark:border-slate-700 last:border-0 flex-shrink-0 flex flex-col">
-              <div className="text-center py-1 text-[9px] font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 border-b border-slate-100 dark:border-slate-700 uppercase tracking-widest">
+              <div className="text-center py-0.5 text-[13px] font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 border-b border-slate-100 dark:border-slate-700 uppercase tracking-widest">
                 {year}
               </div>
               <div className="flex flex-grow items-center">
                 {viewMode === 'quarter' && [1, 2, 3, 4].map(q => (
-                  <div key={q} className="flex-1 text-[8px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-700 last:border-0">Q{q}</div>
+                  <div key={q} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-700 last:border-0">Q{q}</div>
                 ))}
                 {viewMode === 'month' && monthNames.map(m => (
-                  <div key={m} className="flex-1 text-[8px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-700 last:border-0">{m}</div>
+                  <div key={m} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-700 last:border-0">{m}</div>
                 ))}
                 {viewMode === 'week' && monthNames.map((m) => (
                   <div key={m} className="flex-grow border-r border-slate-100 dark:border-slate-700 last:border-0 h-full flex flex-col justify-center">
-                    <div className="text-[7px] text-center text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter leading-none">{m}</div>
+                    <div className="text-[11px] text-center text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter leading-none">{m}</div>
                     <div className="flex justify-around mt-0.5">
                       {[1, 2, 3, 4].map(w => (
-                        <div key={w} className="text-[6px] text-slate-400 dark:text-slate-500 font-bold">W{w}</div>
+                        <div key={w} className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">W{w}</div>
                       ))}
                     </div>
                   </div>
@@ -149,8 +154,6 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
     );
   };
 
-  const timelineWidth = viewMode === 'week' ? 5500 : viewMode === 'month' ? 2800 : 1800;
-
   // Export Logic
   const handleExport = () => {
     const exportStart = new Date(exportRange.start).getTime();
@@ -159,14 +162,12 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
     const dataToExport: any[] = [];
 
     filteredProjects.forEach(project => {
-      // Tasks in range
       const tasksInRange = (project.tasks || []).filter(task => {
         const tStart = new Date(task.startDate).getTime();
         const tEnd = new Date(task.endDate).getTime();
         return (tStart <= exportEnd && tEnd >= exportStart);
       });
 
-      // Milestones in range
       const milestonesInRange = (project.milestones || []).filter(ms => {
         const msDate = new Date(ms.date).getTime();
         return (msDate >= exportStart && msDate <= exportEnd);
@@ -236,12 +237,15 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
     setIsExportModalOpen(false);
   };
 
+  const handleZoomIn = () => setZoomScale(prev => Math.min(prev + 0.2, 3));
+  const handleZoomOut = () => setZoomScale(prev => Math.max(prev - 0.2, 0.4));
+
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-white/80 dark:bg-slate-900/60 glass rounded-2xl p-4 shadow-lg overflow-hidden flex flex-col min-h-[500px]">
         
         {/* Condensed Toolbar */}
-        <div className="flex flex-col xl:flex-row justify-between items-center mb-4 gap-3">
+        <div className="flex flex-col xl:flex-row items-center justify-between mb-4 gap-4">
           <div className="flex-shrink-0">
             <h3 className="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2 leading-none">
               Timeline
@@ -249,50 +253,33 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
             </h3>
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2 flex-grow">
-            {/* Export Buttons Hidden per request */}
-            {/* 
-            <div className="flex gap-1.5 mr-2">
-              <button 
-                onClick={() => { setExportType('pdf'); setIsExportModalOpen(true); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-all font-black text-[9px] shadow-sm uppercase tracking-wider"
-                title="Export PDF"
-              >
-                <FileDown size={14} /> PDF
-              </button>
-              <button 
-                onClick={() => { setExportType('excel'); setIsExportModalOpen(true); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all font-black text-[9px] shadow-sm uppercase tracking-wider"
-                title="Export Excel"
-              >
-                <FileSpreadsheet size={14} /> EXCEL
-              </button>
-            </div> 
-            */}
-
-            <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700">
+          {/* Grouped all controls to be pushed to the right */}
+          <div className="flex flex-wrap items-center justify-end gap-3 flex-grow">
+            
+            {/* Filter Group with frame - Moved to be part of the right-aligned section */}
+            <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800 p-1 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:border-indigo-200 dark:hover:border-indigo-800">
               <select 
                 value={filters.department}
                 onChange={(e) => setFilters({...filters, department: e.target.value})}
-                className="bg-transparent border-none text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[80px]"
+                className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
               >
-                <option value="" className="dark:bg-slate-800">Dept</option>
+                <option value="" className="dark:bg-slate-800">Department</option>
                 {masterData.departments.map(d => <option key={d} value={d} className="dark:bg-slate-800">{d}</option>)}
               </select>
-              <div className="w-px h-3 bg-slate-300 dark:bg-slate-700" />
+              <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
               <select 
                 value={filters.leader}
                 onChange={(e) => setFilters({...filters, leader: e.target.value})}
-                className="bg-transparent border-none text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[80px]"
+                className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
               >
                 <option value="" className="dark:bg-slate-800">Leader</option>
                 {masterData.leaders.map(l => <option key={l} value={l} className="dark:bg-slate-800">{l}</option>)}
               </select>
-              <div className="w-px h-3 bg-slate-300 dark:bg-slate-700" />
+              <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
               <select 
                 value={filters.status}
                 onChange={(e) => setFilters({...filters, status: e.target.value})}
-                className="bg-transparent border-none text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[80px]"
+                className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
               >
                 <option value="" className="dark:bg-slate-800">Status</option>
                 {masterData.statuses.map(s => <option key={s.id} value={s.name} className="dark:bg-slate-800">{s.name}</option>)}
@@ -302,46 +289,69 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                   onClick={() => setFilters({ department: '', leader: '', status: '' })}
                   className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 rounded-full transition-all"
                 >
-                  <XCircle size={12} />
+                  <XCircle size={14} />
                 </button>
               )}
             </div>
 
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg">
-              <button onClick={expandAll} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all"><Maximize2 size={14} /></button>
-              <button onClick={collapseAll} className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all"><Minimize2 size={14} /></button>
+            {/* Zoom Buttons group next to filters */}
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+              <button 
+                onClick={handleZoomOut}
+                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-all active:scale-90"
+                title="Zoom Out"
+              >
+                <Minus size={14} />
+              </button>
+              <div className="w-px h-4 self-center bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <button 
+                onClick={handleZoomIn}
+                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-all active:scale-90"
+                title="Zoom In"
+              >
+                <Plus size={14} />
+              </button>
             </div>
 
-            <button 
-              onClick={() => {
-                if (mainScrollContainerRef.current) {
-                  const todayPos = ((now.getTime() - startDate) / totalDuration) * timelineWidth;
-                  mainScrollContainerRef.current.scrollTo({ left: todayPos - mainScrollContainerRef.current.clientWidth / 2, behavior: 'smooth' });
-                }
-              }}
-              className="p-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-indigo-500 dark:text-indigo-400 shadow-sm"
-            >
-              <Target size={16} />
-            </button>
-            
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-              {['week', 'month', 'quarter'].map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode as ViewMode)}
-                  className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all ${
-                    viewMode === mode ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500'
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
+            {/* View controls group */}
+            <div className="flex items-center gap-2">
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                <button onClick={expandAll} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all"><Maximize2 size={14} /></button>
+                <button onClick={collapseAll} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all"><Minimize2 size={14} /></button>
+              </div>
+
+              <button 
+                onClick={() => {
+                  if (mainScrollContainerRef.current) {
+                    const todayPos = ((now.getTime() - startDate) / totalDuration) * timelineWidth;
+                    mainScrollContainerRef.current.scrollTo({ left: todayPos - mainScrollContainerRef.current.clientWidth / 2, behavior: 'smooth' });
+                  }
+                }}
+                className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-indigo-500 dark:text-indigo-400 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all"
+                title="Go to Today"
+              >
+                <Target size={16} />
+              </button>
+              
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                {['week', 'month', 'quarter'].map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode as ViewMode)}
+                    className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${
+                      viewMode === mode ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Dense Gantt Grid */}
-        <div className="relative border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-[600px] flex flex-col">
+        <div className="relative border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-[600px] flex flex-col shadow-inner">
           <div 
             ref={mainScrollContainerRef}
             className="w-full flex-grow overflow-auto relative no-scrollbar"
@@ -353,7 +363,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                   className="sticky left-0 flex-shrink-0 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex items-center px-4 z-[110]" 
                   style={{ width: `${SIDEBAR_WIDTH}px`, height: `${HEADER_HEIGHT}px` }}
                 >
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Projects</span>
+                  <span className="text-[13px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Projects</span>
                 </div>
                 <div className="flex-grow bg-white dark:bg-slate-900">
                    {renderTimelineHeaderContent()}
