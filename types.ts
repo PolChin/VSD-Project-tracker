@@ -2,11 +2,18 @@
 export interface Task {
   id: string;
   name: string;
-  description?: string; // Added description field for tasks
+  description?: string;
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
   progress: number;
   weight: number;    // % weight of the task within the project
+}
+
+export interface Milestone {
+  id: string;
+  name: string;
+  description?: string;
+  date: string; // YYYY-MM-DD
 }
 
 export interface Project {
@@ -17,7 +24,8 @@ export interface Project {
   status: string;
   progress: number;
   tasks: Task[];
-  updatedAt: any;
+  milestones?: Milestone[];
+  updatedAt: string; // ISO format string
   description?: string;
   projectId?: string;
 }
