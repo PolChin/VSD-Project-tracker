@@ -40,14 +40,6 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
     status: ''
   });
   
-  // Export states (Kept for potential future use)
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportType, setExportType] = useState<'pdf' | 'excel'>('pdf');
-  const [exportRange, setExportRange] = useState({
-    start: new Date().toISOString().split('T')[0],
-    end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  });
-
   const mainScrollContainerRef = useRef<HTMLDivElement>(null);
   
   const now = new Date();
@@ -155,90 +147,6 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
     );
   };
 
-  // Export Logic
-  const handleExport = () => {
-    const exportStart = new Date(exportRange.start).getTime();
-    const exportEnd = new Date(exportRange.end).getTime();
-
-    const dataToExport: any[] = [];
-
-    filteredProjects.forEach(project => {
-      const tasksInRange = (project.tasks || []).filter(task => {
-        const tStart = new Date(task.startDate).getTime();
-        const tEnd = new Date(task.endDate).getTime();
-        return (tStart <= exportEnd && tEnd >= exportStart);
-      });
-
-      const milestonesInRange = (project.milestones || []).filter(ms => {
-        const msDate = new Date(ms.date).getTime();
-        return (msDate >= exportStart && msDate <= exportEnd);
-      });
-
-      if (tasksInRange.length > 0 || milestonesInRange.length > 0) {
-        tasksInRange.forEach(t => {
-          dataToExport.push({
-            'Project': project.name,
-            'Leader': project.leader,
-            'Department': project.department,
-            'Type': 'Task',
-            'Name': t.name,
-            'Start Date': t.startDate,
-            'End Date': t.endDate,
-            'Progress (%)': t.progress
-          });
-        });
-        milestonesInRange.forEach(m => {
-          dataToExport.push({
-            'Project': project.name,
-            'Leader': project.leader,
-            'Department': project.department,
-            'Type': 'Milestone',
-            'Name': m.name,
-            'Start Date': m.date,
-            'End Date': '-',
-            'Progress (%)': '-',
-            'Achieved': m.completed ? 'Yes' : 'No'
-          });
-        });
-      }
-    });
-
-    if (dataToExport.length === 0) {
-      alert('No data found for the selected date range.');
-      return;
-    }
-
-    if (exportType === 'excel') {
-      const ws = (window as any).XLSX.utils.json_to_sheet(dataToExport);
-      const wb = (window as any).XLSX.utils.book_new();
-      (window as any).XLSX.utils.book_append_sheet(wb, ws, "ProjectTimeline");
-      (window as any).XLSX.writeFile(wb, `Project_Timeline_${exportRange.start}_to_${exportRange.end}.xlsx`);
-    } else {
-      const doc = new (window as any).jspdf.jsPDF();
-      doc.setFontSize(14);
-      doc.text(`Project Timeline Analysis: ${exportRange.start} to ${exportRange.end}`, 14, 15);
-      
-      const tableColumn = ["Project", "Type", "Activity", "Start", "End", "Status"];
-      const tableRows = dataToExport.map(row => [
-        row.Project,
-        row.Type,
-        row.Name,
-        row['Start Date'],
-        row['End Date'],
-        row['Progress (%)'] === '-' ? (row.Achieved === 'Yes' ? 'Achieved' : 'Pending') : `${row['Progress (%)']}%`
-      ]);
-
-      (doc as any).autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 25,
-      });
-      doc.save(`Project_Timeline_${exportRange.start}_to_${exportRange.end}.pdf`);
-    }
-
-    setIsExportModalOpen(false);
-  };
-
   const handleZoomIn = () => setZoomScale(prev => Math.min(prev + 0.2, 3));
   const handleZoomOut = () => setZoomScale(prev => Math.max(prev - 0.2, 0.4));
 
@@ -335,17 +243,17 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
           </div>
         </div>
 
-        {/* Dense Gantt Grid */}
+        {/* Dense Gantt Grid - Native Scrollbars enabled for horizontal/vertical sliding */}
         <div className="relative border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-[600px] flex flex-col shadow-inner">
           <div 
             ref={mainScrollContainerRef}
-            className="w-full flex-grow overflow-auto relative no-scrollbar"
+            className="w-full flex-grow overflow-auto relative"
           >
             <div className="min-h-full flex flex-col relative" style={{ width: `${SIDEBAR_WIDTH + timelineWidth}px` }}>
               
-              <div className="flex sticky top-0 z-[100] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex sticky top-0 z-[110] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                 <div 
-                  className="sticky left-0 flex-shrink-0 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex items-center px-4 z-[110]" 
+                  className="sticky left-0 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex items-center px-4 z-[130]" 
                   style={{ width: `${SIDEBAR_WIDTH}px`, height: `${HEADER_HEIGHT}px` }}
                 >
                   <span className="text-[13px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Projects</span>
@@ -374,9 +282,9 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
 
                   return (
                     <React.Fragment key={project.id}>
-                      <div className="flex border-b border-slate-100 dark:border-slate-800 group relative hover:z-[90] transition-all">
+                      <div className="flex border-b border-slate-100 dark:border-slate-800 group relative hover:z-[95] transition-all">
                         <div 
-                          className={`sticky left-0 flex-shrink-0 z-[50] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex items-center px-4 cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-all ${expandedProjects[project.id] ? 'bg-indigo-50/5 dark:bg-slate-800/20' : ''}`}
+                          className={`sticky left-0 flex-shrink-0 z-[120] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 flex items-center px-4 cursor-pointer hover:bg-indigo-50/20 dark:hover:bg-indigo-900/10 transition-all ${expandedProjects[project.id] ? 'bg-indigo-50/5 dark:bg-slate-800/20' : ''}`}
                           style={{ width: `${SIDEBAR_WIDTH}px`, height: `${PROJECT_ROW_HEIGHT}px` }}
                           onClick={() => toggleProject(project.id)}
                         >
@@ -421,7 +329,6 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                                 className="absolute top-0 z-40 group/milestone cursor-pointer hover:z-[100]"
                                 style={{ left: `${mPos}%`, transform: 'translateX(-50%)' }}
                               >
-                                {/* Triangle shape: Green if achieved, Red if pending */}
                                 <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[10px] ${isAchieved ? 'border-t-emerald-500' : 'border-t-rose-600 dark:border-t-rose-500'} shadow-sm`}></div>
                                 
                                 <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/95 dark:bg-slate-950 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/milestone:opacity-100 group-hover/milestone:visible transition-all duration-200 z-[150] min-w-[160px] pointer-events-none border border-slate-700 dark:border-slate-800">
@@ -452,9 +359,9 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                         const tBarWidth = Math.max(tEndPos - tStartPos, 0.5);
 
                         return (
-                          <div key={task.id} className="flex border-b border-slate-50 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-800/10 relative hover:z-[90] transition-all">
+                          <div key={task.id} className="flex border-b border-slate-50 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-800/10 relative hover:z-[95] transition-all">
                             <div 
-                              className="sticky left-0 flex-shrink-0 z-[50] bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-700 flex items-center pl-8 pr-4"
+                              className="sticky left-0 flex-shrink-0 z-[120] bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-700 flex items-center pl-8 pr-4"
                               style={{ width: `${SIDEBAR_WIDTH}px`, height: `${TASK_ROW_HEIGHT}px` }}
                             >
                               <ListChecks size={10} className="text-slate-300 dark:text-slate-600 mr-2" />
@@ -480,69 +387,6 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
           </div>
         </div>
       </div>
-
-      {/* Export Date Selection Modal */}
-      {isExportModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm" onClick={() => setIsExportModalOpen(false)} />
-          <div className="relative bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                {exportType === 'pdf' ? <FileDown className="text-rose-500" /> : <FileSpreadsheet className="text-emerald-500" />}
-                Export to {exportType.toUpperCase()}
-              </h3>
-              <button onClick={() => setIsExportModalOpen(false)} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4 mb-8">
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Start Date</label>
-                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5">
-                  <Calendar size={16} className="text-indigo-500" />
-                  <input 
-                    type="date" 
-                    value={exportRange.start}
-                    onChange={(e) => setExportRange({ ...exportRange, start: e.target.value })}
-                    className="flex-grow bg-transparent border-none text-sm font-bold text-slate-800 dark:text-slate-200 focus:ring-0 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5 ml-1">End Date</label>
-                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5">
-                  <Calendar size={16} className="text-rose-500" />
-                  <input 
-                    type="date" 
-                    value={exportRange.end}
-                    onChange={(e) => setExportRange({ ...exportRange, end: e.target.value })}
-                    className="flex-grow bg-transparent border-none text-sm font-bold text-slate-800 dark:text-slate-200 focus:ring-0 outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setIsExportModalOpen(false)}
-                className="flex-1 py-3 rounded-xl text-xs font-black text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 uppercase tracking-widest transition-all"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleExport}
-                className={`flex-1 py-3 rounded-xl text-xs font-black text-white shadow-lg uppercase tracking-widest transition-all ${
-                  exportType === 'pdf' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'
-                }`}
-              >
-                Generate Report
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
