@@ -61,7 +61,6 @@ const App: React.FC = () => {
           }
         }
         
-        // Plainify the mapping to avoid circular structure errors from Firebase SDK internals
         return {
           id: doc.id,
           name: String(data.name || 'Untitled'),
@@ -82,7 +81,8 @@ const App: React.FC = () => {
             id: String(m.id),
             name: String(m.name),
             description: String(m.description || ''),
-            date: String(m.date)
+            date: String(m.date),
+            completed: !!m.completed
           })) as Milestone[],
           updatedAt: updatedStr,
           description: String(data.description || '')

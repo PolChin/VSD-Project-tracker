@@ -14,6 +14,7 @@ export interface Milestone {
   name: string;
   description?: string;
   date: string; // YYYY-MM-DD
+  completed?: boolean;
 }
 
 export interface Project {

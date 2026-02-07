@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, collection, doc, writeBatch, query, orderBy, limit, getDocs } from '../firebase';
 import { Project, MasterData, Task, Milestone } from '../types';
-import { Plus, Trash2, Save, Activity, FileText, Calendar, Flag, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Save, Activity, FileText, Calendar, Flag, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface ProjectFormProps {
   masterData: MasterData;
@@ -33,7 +33,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       id: String(m.id),
       name: String(m.name || ''),
       description: String(m.description || ''),
-      date: String(m.date || '')
+      date: String(m.date || ''),
+      completed: !!m.completed
     }));
   };
 
@@ -94,7 +95,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       id: Math.random().toString(36).substr(2, 9),
       name: '',
       description: '',
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
+      completed: false
     };
     setFormData(prev => ({ ...prev, milestones: [...prev.milestones, newMilestone] }));
   };
@@ -103,7 +105,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
     setFormData(prev => ({ ...prev, milestones: prev.milestones.filter(m => m.id !== id) }));
   };
 
-  const updateMilestone = (id: string, field: keyof Milestone, value: string) => {
+  const updateMilestone = (id: string, field: keyof Milestone, value: string | boolean) => {
     setFormData(prev => ({
       ...prev,
       milestones: prev.milestones.map(m => m.id === id ? { ...m, [field]: value } : m)
@@ -169,7 +171,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       }
         
       const batch = writeBatch(db);
-      // Use client-side timestamp as ISO string to avoid FieldValue circular reference issues
       const timestampStr = new Date().toISOString();
       
       const documentData = {
@@ -215,13 +216,14 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       <div className="flex justify-between items-start mb-6">
         <div>
           <h3 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            {isEditMode ? 'Modify Project' : 'Create New Project'}
+            {isEditMode ? 'Update project' : 'Create New Project'}
           </h3>
         </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4 mb-8">
+        {/* Row 1 Left: Project Name & Description */}
+        <div className="flex flex-col gap-4">
           <div className="group">
             <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
               PROJECT NAME <span className="text-rose-500 font-bold">*</span>
@@ -239,7 +241,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
             {errors.name && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.name}</div>}
           </div>
 
-          <div className="group">
+          <div className="group flex-grow flex flex-col">
             <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1 flex items-center gap-1">
               <FileText size={10} /> SHORT DESCRIPTION
             </label>
@@ -247,78 +249,83 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
               rows={2}
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs font-medium text-slate-700 dark:text-slate-300 resize-none shadow-inner"
+              className="w-full h-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs font-medium text-slate-700 dark:text-slate-300 resize-none shadow-inner"
               placeholder="High-level project goals..."
             />
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="group">
-              <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
-                LEADER <span className="text-rose-500 font-bold">*</span>
-              </label>
-              <select 
-                value={formData.leader}
-                onChange={e => {
-                  setFormData({ ...formData, leader: e.target.value });
-                  if (errors.leader) setErrors(prev => { const n = {...prev}; delete n.leader; return n; });
-                }}
-                className={`w-full bg-slate-50 dark:bg-slate-800 border ${errors.leader ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all text-xs font-bold text-slate-700 dark:text-slate-300 appearance-none cursor-pointer`}
-              >
-                <option value="" className="dark:bg-slate-800">Select Leader</option>
-                {masterData.leaders.map(l => <option key={l} value={l} className="dark:bg-slate-800">{l}</option>)}
-              </select>
-              {errors.leader && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.leader}</div>}
+        {/* Row 1 Right: Master Progress - Height matched to Left column */}
+        <div className="flex flex-col">
+          <div className="bg-indigo-50/50 dark:bg-slate-800/50 rounded-3xl p-5 border border-indigo-100 dark:border-slate-700 flex flex-col justify-center shadow-inner relative overflow-hidden h-full">
+            <div className="flex justify-between items-end mb-3 relative z-10">
+              <label className="block text-[10px] font-black uppercase text-indigo-900/50 dark:text-indigo-400/50 tracking-widest">MASTER PROGRESS</label>
+              <span className="text-4xl font-black text-indigo-700 dark:text-indigo-400 leading-none">{formData.progress}%</span>
             </div>
-            <div className="group">
-              <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
-                DEPARTMENT <span className="text-rose-500 font-bold">*</span>
-              </label>
-              <select 
-                value={formData.department}
-                onChange={e => {
-                  setFormData({ ...formData, department: e.target.value });
-                  if (errors.department) setErrors(prev => { const n = {...prev}; delete n.department; return n; });
-                }}
-                className={`w-full bg-slate-50 dark:bg-slate-800 border ${errors.department ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all text-xs font-bold text-slate-700 dark:text-slate-300 appearance-none cursor-pointer`}
-              >
-                <option value="" className="dark:bg-slate-800">Select Dept</option>
-                {masterData.departments.map(d => <option key={d} value={d} className="dark:bg-slate-800">{d}</option>)}
-              </select>
-              {errors.department && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.department}</div>}
+            <div className="w-full h-4 bg-white/60 dark:bg-slate-900/60 rounded-full overflow-hidden p-0.5 shadow-inner relative z-10">
+              <div 
+                className="h-full bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-700"
+                style={{ width: `${formData.progress}%` }}
+              />
             </div>
           </div>
         </div>
 
-        <div className="bg-indigo-50/50 dark:bg-slate-800/50 rounded-3xl p-6 border border-indigo-100 dark:border-slate-700 flex flex-col justify-center shadow-inner relative overflow-hidden">
-          <div className="flex justify-between items-end mb-4 relative z-10">
-            <label className="block text-[10px] font-black uppercase text-indigo-900/50 dark:text-indigo-400/50 tracking-widest">MASTER PROGRESS</label>
-            <span className="text-4xl font-black text-indigo-700 dark:text-indigo-400 leading-none">{formData.progress}%</span>
-          </div>
-          <div className="w-full h-4 bg-white/60 dark:bg-slate-900/60 rounded-full overflow-hidden p-0.5 shadow-inner relative z-10">
-             <div 
-              className="h-full bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-700"
-              style={{ width: `${formData.progress}%` }}
-             />
-          </div>
-          
-          <div className="mt-6 relative z-10">
+        {/* Row 2 Left: Leader & Department */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="group">
             <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
-              STATUS <span className="text-rose-500 font-bold">*</span>
+              LEADER <span className="text-rose-500 font-bold">*</span>
             </label>
             <select 
-              value={formData.status}
+              value={formData.leader}
               onChange={e => {
-                setFormData({ ...formData, status: e.target.value });
-                if (errors.status) setErrors(prev => { const n = {...prev}; delete n.status; return n; });
+                setFormData({ ...formData, leader: e.target.value });
+                if (errors.leader) setErrors(prev => { const n = {...prev}; delete n.leader; return n; });
               }}
-              className={`w-full bg-white dark:bg-slate-800 border ${errors.status ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all text-[10px] font-black uppercase text-slate-800 dark:text-slate-100 tracking-wider appearance-none cursor-pointer shadow-sm`}
+              className={`w-full bg-slate-50 dark:bg-slate-800 border ${errors.leader ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all text-xs font-bold text-slate-700 dark:text-slate-300 appearance-none cursor-pointer`}
             >
-              <option value="" className="dark:bg-slate-800">Select Status</option>
-              {masterData.statuses.map(s => <option key={s.id} value={s.name} className="dark:bg-slate-800">{s.name}</option>)}
+              <option value="" className="dark:bg-slate-800">Select Leader</option>
+              {masterData.leaders.map(l => <option key={l} value={l} className="dark:bg-slate-800">{l}</option>)}
             </select>
-            {errors.status && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.status}</div>}
+            {errors.leader && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.leader}</div>}
           </div>
+          <div className="group">
+            <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
+              DEPARTMENT <span className="text-rose-500 font-bold">*</span>
+            </label>
+            <select 
+              value={formData.department}
+              onChange={e => {
+                setFormData({ ...formData, department: e.target.value });
+                if (errors.department) setErrors(prev => { const n = {...prev}; delete n.department; return n; });
+              }}
+              className={`w-full bg-slate-50 dark:bg-slate-800 border ${errors.department ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all text-xs font-bold text-slate-700 dark:text-slate-300 appearance-none cursor-pointer`}
+            >
+              <option value="" className="dark:bg-slate-800">Select Dept</option>
+              {masterData.departments.map(d => <option key={d} value={d} className="dark:bg-slate-800">{d}</option>)}
+            </select>
+            {errors.department && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.department}</div>}
+          </div>
+        </div>
+
+        {/* Row 2 Right: Status - Aligned with Department */}
+        <div className="group">
+          <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
+            STATUS <span className="text-rose-500 font-bold">*</span>
+          </label>
+          <select 
+            value={formData.status}
+            onChange={e => {
+              setFormData({ ...formData, status: e.target.value });
+              if (errors.status) setErrors(prev => { const n = {...prev}; delete n.status; return n; });
+            }}
+            className={`w-full bg-slate-50 dark:bg-slate-800 border ${errors.status ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all text-[10px] font-black uppercase text-slate-800 dark:text-slate-100 tracking-wider appearance-none cursor-pointer shadow-sm`}
+          >
+            <option value="" className="dark:bg-slate-800">Select Status</option>
+            {masterData.statuses.map(s => <option key={s.id} value={s.name} className="dark:bg-slate-800">{s.name}</option>)}
+          </select>
+          {errors.status && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.status}</div>}
         </div>
       </div>
 
@@ -467,7 +474,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
                       </div>
                    </div>
                    
-                   <div className="w-full lg:w-72 flex items-center gap-6">
+                   <div className="w-full lg:w-[420px] flex items-center gap-6">
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <label className="block text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 mb-1 tracking-widest">ACHIEVED</label>
+                        <input 
+                          type="checkbox"
+                          checked={!!milestone.completed}
+                          onChange={e => updateMilestone(milestone.id, 'completed', e.target.checked)}
+                          className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 transition-all cursor-pointer"
+                        />
+                      </div>
+
                       <div className="flex-grow">
                         <label className="block text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 mb-1 tracking-widest">TARGET DATE</label>
                         <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
@@ -480,7 +497,10 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
                           />
                         </div>
                       </div>
-                      <button type="button" onClick={() => handleRemoveMilestone(milestone.id)} className="text-slate-300 dark:text-slate-600 hover:text-rose-500 p-2 mt-4"><Trash2 size={16} /></button>
+                      
+                      <button type="button" onClick={() => handleRemoveMilestone(milestone.id)} className="text-slate-300 dark:text-slate-600 hover:text-rose-500 p-2 mt-4 flex-shrink-0 transition-colors">
+                        <Trash2 size={16} />
+                      </button>
                    </div>
                 </div>
               </div>

@@ -19,7 +19,8 @@ import {
   Calendar,
   X,
   Plus,
-  Minus
+  Minus,
+  CheckCircle2
 } from 'lucide-react';
 
 interface GanttDashboardProps {
@@ -195,7 +196,8 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
             'Name': m.name,
             'Start Date': m.date,
             'End Date': '-',
-            'Progress (%)': '-'
+            'Progress (%)': '-',
+            'Achieved': m.completed ? 'Yes' : 'No'
           });
         });
       }
@@ -223,7 +225,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
         row.Name,
         row['Start Date'],
         row['End Date'],
-        row['Progress (%)'] === '-' ? '-' : `${row['Progress (%)']}%`
+        row['Progress (%)'] === '-' ? (row.Achieved === 'Yes' ? 'Achieved' : 'Pending') : `${row['Progress (%)']}%`
       ]);
 
       (doc as any).autoTable({
@@ -253,10 +255,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
             </h3>
           </div>
 
-          {/* Grouped all controls to be pushed to the right */}
           <div className="flex flex-wrap items-center justify-end gap-3 flex-grow">
-            
-            {/* Filter Group with frame - Moved to be part of the right-aligned section */}
             <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800 p-1 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:border-indigo-200 dark:hover:border-indigo-800">
               <select 
                 value={filters.department}
@@ -294,26 +293,12 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
               )}
             </div>
 
-            {/* Zoom Buttons group next to filters */}
             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-              <button 
-                onClick={handleZoomOut}
-                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-all active:scale-90"
-                title="Zoom Out"
-              >
-                <Minus size={14} />
-              </button>
+              <button onClick={handleZoomOut} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-all active:scale-90" title="Zoom Out"><Minus size={14} /></button>
               <div className="w-px h-4 self-center bg-slate-200 dark:bg-slate-700 mx-0.5" />
-              <button 
-                onClick={handleZoomIn}
-                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-all active:scale-90"
-                title="Zoom In"
-              >
-                <Plus size={14} />
-              </button>
+              <button onClick={handleZoomIn} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-all active:scale-90" title="Zoom In"><Plus size={14} /></button>
             </div>
 
-            {/* View controls group */}
             <div className="flex items-center gap-2">
               <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                 <button onClick={expandAll} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all"><Maximize2 size={14} /></button>
@@ -429,21 +414,29 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                           {project.milestones?.map((milestone) => {
                             const mPos = getTimelinePosition(milestone.date);
                             if (mPos === null) return null;
+                            const isAchieved = !!milestone.completed;
                             return (
                               <div 
                                 key={milestone.id}
                                 className="absolute top-0 z-40 group/milestone cursor-pointer hover:z-[100]"
                                 style={{ left: `${mPos}%`, transform: 'translateX(-50%)' }}
                               >
-                                <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[10px] border-t-rose-600 dark:border-t-rose-500 shadow-sm"></div>
+                                {/* Triangle shape: Green if achieved, Red if pending */}
+                                <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[10px] ${isAchieved ? 'border-t-emerald-500' : 'border-t-rose-600 dark:border-t-rose-500'} shadow-sm`}></div>
+                                
                                 <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/95 dark:bg-slate-950 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/milestone:opacity-100 group-hover/milestone:visible transition-all duration-200 z-[150] min-w-[160px] pointer-events-none border border-slate-700 dark:border-slate-800">
                                    <div className="flex items-center gap-2 mb-1 border-b border-slate-700 dark:border-slate-800 pb-1">
-                                      <Flag size={10} className="text-rose-500 fill-rose-500" />
+                                      <Flag size={10} className={`${isAchieved ? 'text-emerald-500 fill-emerald-500' : 'text-rose-500 fill-rose-500'}`} />
                                       <span className="text-[10px] font-black uppercase tracking-widest leading-none">Milestone</span>
+                                      {isAchieved && (
+                                        <div className="flex items-center gap-1 ml-auto text-[8px] text-emerald-400 font-black tracking-widest uppercase">
+                                          <CheckCircle2 size={10} /> ACHIEVED
+                                        </div>
+                                      )}
                                    </div>
                                    <div className="text-[11px] font-bold text-white mb-0.5 leading-tight">{milestone.name}</div>
                                    <div className="text-[9px] text-slate-300 dark:text-slate-400 font-medium mb-1.5 leading-snug">{milestone.description || 'No description'}</div>
-                                   <div className="text-[8px] font-black text-rose-400 bg-rose-400/10 px-1.5 py-0.5 rounded-md inline-block uppercase tracking-wider border border-rose-400/20">
+                                   <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-md inline-block uppercase tracking-wider border ${isAchieved ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-rose-400 bg-rose-400/10 border-rose-400/20'}`}>
                                       {milestone.date}
                                    </div>
                                 </div>
