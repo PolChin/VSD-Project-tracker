@@ -122,23 +122,25 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
               <div className="text-center py-0.5 text-[13px] font-black text-indigo-700 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-900/10 border-b border-slate-100 dark:border-slate-700 uppercase tracking-widest">
                 {year}
               </div>
-              <div className="flex flex-grow items-center">
-                {viewMode === 'quarter' && [1, 2, 3, 4].map(q => (
-                  <div key={q} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-700 last:border-0">Q{q}</div>
-                ))}
-                {viewMode === 'month' && monthNames.map(m => (
-                  <div key={m} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-700 last:border-0">{m}</div>
-                ))}
-                {viewMode === 'week' && monthNames.map((m) => (
-                  <div key={m} className="flex-grow border-r border-slate-100 dark:border-slate-700 last:border-0 h-full flex flex-col justify-center">
-                    <div className="text-[11px] text-center text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter leading-none">{m}</div>
-                    <div className="flex justify-around mt-0.5">
-                      {[1, 2, 3, 4].map(w => (
-                        <div key={w} className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">W{w}</div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex-grow bg-white dark:bg-slate-900">
+                   <div className="flex h-full items-center">
+                    {viewMode === 'quarter' && [1, 2, 3, 4].map(q => (
+                      <div key={q} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-700 last:border-0">Q{q}</div>
+                    ))}
+                    {viewMode === 'month' && monthNames.map(m => (
+                      <div key={m} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-700 last:border-0">{m}</div>
+                    ))}
+                    {viewMode === 'week' && monthNames.map((m) => (
+                      <div key={m} className="flex-grow border-r border-slate-100 dark:border-slate-700 last:border-0 h-full flex flex-col justify-center">
+                        <div className="text-[11px] text-center text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter leading-none">{m}</div>
+                        <div className="flex justify-around mt-0.5">
+                          {[1, 2, 3, 4].map(w => (
+                            <div key={w} className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">W{w}</div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                   </div>
               </div>
             </div>
           );
@@ -152,7 +154,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-white/80 dark:bg-slate-900/60 glass rounded-2xl p-4 shadow-lg overflow-hidden flex flex-col min-h-[500px]">
+      <div className="bg-white/80 dark:bg-slate-900/60 glass rounded-2xl p-4 shadow-lg overflow-hidden flex flex-col">
         
         {/* Condensed Toolbar */}
         <div className="flex flex-col xl:flex-row items-center justify-between mb-4 gap-4">
@@ -170,7 +172,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                 onChange={(e) => setFilters({...filters, department: e.target.value})}
                 className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
               >
-                <option value="" className="dark:bg-slate-800">Department</option>
+                <option value="" className="dark:bg-slate-800">Owner's Dept.</option>
                 {masterData.departments.map(d => <option key={d} value={d} className="dark:bg-slate-800">{d}</option>)}
               </select>
               <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
@@ -243,7 +245,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
           </div>
         </div>
 
-        {/* Dense Gantt Grid - Native Scrollbars enabled for horizontal/vertical sliding */}
+        {/* Standardized Gantt Grid Height - 600px */}
         <div className="relative border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-[600px] flex flex-col shadow-inner">
           <div 
             ref={mainScrollContainerRef}
@@ -335,11 +337,6 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                                    <div className="flex items-center gap-2 mb-1 border-b border-slate-700 dark:border-slate-800 pb-1">
                                       <Flag size={10} className={`${isAchieved ? 'text-emerald-500 fill-emerald-500' : 'text-rose-500 fill-rose-500'}`} />
                                       <span className="text-[10px] font-black uppercase tracking-widest leading-none">Milestone</span>
-                                      {isAchieved && (
-                                        <div className="flex items-center gap-1 ml-auto text-[8px] text-emerald-400 font-black tracking-widest uppercase">
-                                          <CheckCircle2 size={10} /> ACHIEVED
-                                        </div>
-                                      )}
                                    </div>
                                    <div className="text-[11px] font-bold text-white mb-0.5 leading-tight">{milestone.name}</div>
                                    <div className="text-[9px] text-slate-300 dark:text-slate-400 font-medium mb-1.5 leading-snug">{milestone.description || 'No description'}</div>

@@ -14,10 +14,11 @@ import GanttDashboard from './components/GanttDashboard';
 import ProjectList from './components/ProjectList';
 import ProjectForm from './components/ProjectForm';
 import VarianceUI from './components/VarianceUI';
-import { LayoutDashboard, ListTodo, History, X, Sun, Moon } from 'lucide-react';
+import LeaderAnalytics from './components/LeaderAnalytics';
+import { LayoutDashboard, ListTodo, History, X, Sun, Moon, Users } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'history'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'history' | 'analytics'>('dashboard');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -156,7 +157,8 @@ const App: React.FC = () => {
           {[
             { id: 'dashboard', icon: LayoutDashboard, label: 'Timeline' },
             { id: 'projects', icon: ListTodo, label: 'Portfolio' },
-            { id: 'history', icon: History, label: 'Analysis' }
+            { id: 'history', icon: History, label: 'Analysis' },
+            { id: 'analytics', icon: Users, label: 'Leaders' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -185,6 +187,7 @@ const App: React.FC = () => {
           />
         )}
         {activeTab === 'history' && <VarianceUI projects={projects} />}
+        {activeTab === 'analytics' && <LeaderAnalytics projects={projects} masterData={masterData} />}
       </main>
 
       {isModalOpen && (

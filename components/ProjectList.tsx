@@ -18,8 +18,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
     status: ''
   });
 
-  // Column resizing state - Initialized with requested percentages of a 1200px base
-  // Name: 30% (360), Description: 20% (240), Leader: 10% (120), Dept: 10% (120), Status: 10% (120), Progress: 13% (156), Action: 7% (84)
   const [colWidths, setColWidths] = useState<Record<string, number>>({
     name: 360,
     description: 240,
@@ -78,7 +76,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
 
   return (
     <div className="space-y-4">
-      {/* Portfolio Header & Action Bar */}
       <div className="bg-white/50 dark:bg-slate-900/50 glass px-5 py-4 rounded-2xl flex flex-col xl:flex-row gap-4 justify-between items-center shadow-sm">
         <div className="flex-shrink-0">
           <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
@@ -89,9 +86,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
           </h2>
         </div>
 
-        {/* Search & Filters Container */}
         <div className="flex flex-wrap items-center gap-3 flex-grow justify-end w-full xl:w-auto">
-          {/* Search Bar */}
           <div className="relative group flex-grow max-w-md">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
             <input 
@@ -103,7 +98,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
             />
           </div>
 
-          {/* Filters Group */}
           <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
             <div className="flex items-center gap-2 px-2 border-r border-slate-300 dark:border-slate-700">
               <Filter size={12} className="text-slate-400" />
@@ -156,28 +150,26 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
         </div>
       </div>
 
-      {/* Expanded Project Table with Resizable Columns */}
-      <div className="bg-white/80 dark:bg-slate-900/80 glass rounded-3xl shadow-xl overflow-hidden border border-white/40 dark:border-slate-800 relative w-full">
-        <div className="overflow-x-auto no-scrollbar">
+      <div className="bg-white/80 dark:bg-slate-900/80 glass rounded-3xl shadow-xl overflow-hidden border border-white/40 dark:border-slate-800 relative w-full h-[600px] flex flex-col">
+        <div className="overflow-auto no-scrollbar flex-grow">
           <table className="w-full text-left border-collapse table-fixed" style={{ width: 'auto', minWidth: '100%' }}>
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 select-none">
+              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 sticky top-0 z-20 select-none">
                 {[
                   { key: 'name', label: 'Project Name' },
                   { key: 'description', label: 'Description' },
                   { key: 'leader', label: 'Leader' },
-                  { key: 'department', label: 'Department' },
+                  { key: 'department', label: 'Owner\'s Dept.' },
                   { key: 'status', label: 'Status' },
                   { key: 'progress', label: 'Progress' },
                   { key: 'action', label: 'Action' }
                 ].map((col) => (
                   <th 
                     key={col.key} 
-                    className="relative group px-5 py-3.5 text-[11px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest transition-colors hover:text-indigo-500"
+                    className="relative group px-5 py-3.5 text-[11px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest transition-colors hover:text-indigo-500 bg-white dark:bg-slate-900"
                     style={{ width: `${colWidths[col.key]}px` }}
                   >
                     <div className="truncate">{col.label}</div>
-                    {/* Resizing Handle */}
                     {col.key !== 'action' && (
                       <div 
                         onMouseDown={(e) => startResize(col.key, e)}
@@ -194,14 +186,11 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                 
                 return (
                   <tr key={project.id} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20 transition-colors group">
-                    {/* Project Name */}
                     <td className="px-5 py-3.5 align-middle">
                       <span className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors block truncate">
                         {project?.name || 'Untitled'}
                       </span>
                     </td>
-
-                    {/* Description */}
                     <td className="px-4 py-3.5 align-middle">
                       <div className="flex items-center gap-2">
                         <Info size={12} className="text-slate-300 dark:text-slate-600 flex-shrink-0" />
@@ -210,16 +199,12 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                         </span>
                       </div>
                     </td>
-
-                    {/* Leader */}
                     <td className="px-4 py-3.5 align-middle">
                       <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                         <User size={12} className="text-indigo-400 dark:text-indigo-500 flex-shrink-0" />
                         <span className="text-[11px] font-bold truncate">{project?.leader || 'N/A'}</span>
                       </div>
                     </td>
-
-                    {/* Department */}
                     <td className="px-4 py-3.5 text-center align-middle">
                       <div className="inline-flex items-center gap-1 px-3 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
                         <Building2 size={10} className="text-slate-400 dark:text-slate-500" />
@@ -228,8 +213,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                         </span>
                       </div>
                     </td>
-
-                    {/* Status */}
                     <td className="px-4 py-3.5 text-center align-middle">
                       <span 
                         className="inline-block px-3 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider text-white shadow-sm min-w-[90px]"
@@ -238,8 +221,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                         {project?.status || 'UNKNOWN'}
                       </span>
                     </td>
-
-                    {/* Progress */}
                     <td className="px-4 py-3.5 align-middle">
                       <div className="flex items-center gap-3">
                         <div className="flex-grow h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
@@ -253,8 +234,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                         </span>
                       </div>
                     </td>
-
-                    {/* Action */}
                     <td className="px-6 py-3.5 text-right align-middle">
                       <button 
                         onClick={() => onEditProject(project)}
@@ -267,18 +246,6 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                   </tr>
                 );
               })}
-              {filteredProjects.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-8 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3 opacity-30">
-                      <Search size={32} className="text-slate-400" />
-                      <p className="text-xs font-black tracking-[0.3em] uppercase text-slate-500">
-                        No matches found in portfolio
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

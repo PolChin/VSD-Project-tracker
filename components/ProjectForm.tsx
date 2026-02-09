@@ -118,7 +118,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
     if (!formData.leader) newErrors.leader = "Project leader is required";
     if (!formData.department) newErrors.department = "Department is required";
     if (!formData.status) newErrors.status = "Project status is required";
-    if (formData.tasks.length === 0) newErrors.tasks = "At least one task is required";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -154,7 +153,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
     
     if (!validate()) return;
     
-    if (totalWeight !== 100 && totalWeight !== 0) {
+    if (formData.tasks.length > 0 && totalWeight !== 100 && totalWeight !== 0) {
       if (!confirm(`Total weight is ${totalWeight}%. Weights should ideally total 100%. Proceed?`)) {
         return;
       }
@@ -255,7 +254,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
           </div>
         </div>
 
-        {/* Row 1 Right: Master Progress - Height matched to Left column */}
+        {/* Row 1 Right: Master Progress */}
         <div className="flex flex-col">
           <div className="bg-indigo-50/50 dark:bg-slate-800/50 rounded-3xl p-5 border border-indigo-100 dark:border-slate-700 flex flex-col justify-center shadow-inner relative overflow-hidden h-full">
             <div className="flex justify-between items-end mb-3 relative z-10">
@@ -292,7 +291,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
           </div>
           <div className="group">
             <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
-              DEPARTMENT <span className="text-rose-500 font-bold">*</span>
+              OWNER'S DEPT. <span className="text-rose-500 font-bold">*</span>
             </label>
             <select 
               value={formData.department}
@@ -309,7 +308,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
           </div>
         </div>
 
-        {/* Row 2 Right: Status - Aligned with Department */}
+        {/* Row 2 Right: Status */}
         <div className="group">
           <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
             STATUS <span className="text-rose-500 font-bold">*</span>
@@ -331,20 +330,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
 
       <div className="mb-6 flex flex-col gap-10">
         <div className="flex flex-col">
-          <div className={`flex justify-between items-center mb-4 ${errors.tasks ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/30' : 'bg-indigo-50/50 dark:bg-slate-800/50 border-indigo-100/50 dark:border-slate-700'} p-4 rounded-2xl border`}>
+          <div className={`flex justify-between items-center mb-4 bg-indigo-50/50 dark:bg-slate-800/50 border-indigo-100/50 dark:border-slate-700 p-4 rounded-2xl border`}>
             <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <Activity className={errors.tasks ? 'text-rose-600' : 'text-indigo-600 dark:text-indigo-400'} size={16} />
-              Tasks <span className="text-rose-500 font-bold">*</span>
+              <Activity className="text-indigo-600 dark:text-indigo-400" size={16} />
+              Tasks
             </h4>
             <button 
               type="button" 
               onClick={handleAddTask}
-              className={`flex items-center gap-1.5 px-4 py-2 ${errors.tasks ? 'bg-rose-600 hover:bg-rose-700' : 'bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-400'} text-white rounded-xl transition-all font-black text-[10px] shadow-sm uppercase tracking-widest`}
+              className={`flex items-center gap-1.5 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-400 text-white rounded-xl transition-all font-black text-[10px] shadow-sm uppercase tracking-widest`}
             >
               <Plus size={14} /> ADD TASK
             </button>
           </div>
-          {errors.tasks && <div className="mb-4 flex items-center gap-1 text-rose-500 text-[10px] font-bold uppercase px-4"><AlertCircle size={12} /> {errors.tasks}</div>}
           
           <div className="space-y-3">
             {formData.tasks.map((task) => (
