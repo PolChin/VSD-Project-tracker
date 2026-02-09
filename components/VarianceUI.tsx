@@ -37,9 +37,11 @@ const ProgressionChart: React.FC<{ history: ProjectHistory[] }> = ({ history }) 
   const endTime = Math.max(...updateTimes, ...milestoneTimes);
   const timeRange = Math.max(endTime - startTime, 1000 * 60 * 60 * 24 * 7);
 
-  const width = 800;
-  const height = 500; // Adjusted height to fill the 600px container space better
-  const padding = { top: 40, right: 40, bottom: 60, left: 60 };
+  // SVG Dimension Constants
+  const width = 1000;
+  const height = 500; 
+  // Increased padding to prevent clipping of labels and markers
+  const padding = { top: 50, right: 60, bottom: 80, left: 80 };
 
   const getX = (dateStr: string) => {
     const t = new Date(dateStr).getTime();
@@ -55,7 +57,7 @@ const ProgressionChart: React.FC<{ history: ProjectHistory[] }> = ({ history }) 
 
   return (
     <div className="relative bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 shadow-xl border border-white dark:border-slate-800 overflow-hidden h-[600px] flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-indigo-600 dark:bg-indigo-500 rounded-xl text-white shadow-lg">
             <TrendingUp size={18} />
@@ -78,27 +80,41 @@ const ProgressionChart: React.FC<{ history: ProjectHistory[] }> = ({ history }) 
         </div>
       </div>
 
-      <div className="relative w-full flex-grow">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible" preserveAspectRatio="none">
+      <div className="relative w-full flex-grow min-h-0 overflow-hidden bg-slate-50/30 dark:bg-slate-800/10 rounded-3xl">
+        <svg 
+          viewBox={`0 0 ${width} ${height}`} 
+          className="w-full h-full" 
+          preserveAspectRatio="xMidYMid meet"
+        >
           <defs>
             <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.3" />
               <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
             </linearGradient>
           </defs>
 
+          {/* Grid Lines & Labels */}
           {[0, 25, 50, 75, 100].map(p => (
             <g key={p}>
               <line 
                 x1={padding.left} y1={getY(p)} x2={width - padding.right} y2={getY(p)} 
-                className="stroke-slate-100 dark:stroke-slate-800" strokeWidth="1" strokeDasharray="4 4"
+                className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" strokeDasharray="4 4"
               />
-              <text x={padding.left - 15} y={getY(p) + 4} textAnchor="end" className="fill-slate-400 dark:fill-slate-600 text-[10px] font-black">{p}%</text>
+              <text 
+                x={padding.left - 15} 
+                y={getY(p) + 4} 
+                textAnchor="end" 
+                className="fill-slate-400 dark:fill-slate-500 text-[12px] font-black"
+              >
+                {p}%
+              </text>
             </g>
           ))}
 
+          {/* Area Fill */}
           <polyline points={areaPoints} fill="url(#areaGradient)" />
 
+          {/* Milestone Indicators */}
           {latestMilestones.map((m) => {
              const mX = getX(m.date);
              const isAchieved = !!m.completed;
@@ -106,22 +122,45 @@ const ProgressionChart: React.FC<{ history: ProjectHistory[] }> = ({ history }) 
              return (
                <g key={m.id} className="group/ms">
                   <line x1={mX} y1={padding.top} x2={mX} y2={height - padding.bottom} className="stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" strokeDasharray="2 2" />
-                  <rect x={mX - 5} y={getY(0) - 5} width="10" height="10" className={`${colorClass} transition-transform group-hover/ms:scale-150 origin-center cursor-help shadow-sm`} transform={`rotate(45, ${mX}, ${getY(0)})`} />
+                  <rect 
+                    x={mX - 6} 
+                    y={getY(0) - 6} 
+                    width="12" 
+                    height="12" 
+                    className={`${colorClass} transition-transform group-hover/ms:scale-150 origin-center cursor-help shadow-sm`} 
+                    transform={`rotate(45, ${mX}, ${getY(0)})`} 
+                  />
                </g>
              );
           })}
 
-          <polyline points={points} fill="none" stroke="#4f46e5" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="drop-shadow-lg" />
+          {/* Main Progress Line */}
+          <polyline 
+            points={points} 
+            fill="none" 
+            stroke="#4f46e5" 
+            strokeWidth="5" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            className="drop-shadow-lg" 
+          />
 
+          {/* Progress Nodes */}
           {sortedHistory.map((d) => (
             <g key={d.id} className="group/pt cursor-pointer">
-              <circle cx={getX(d.updatedAt)} cy={getY(d.progress)} r="6" className="fill-white dark:fill-indigo-400 stroke-indigo-600 dark:stroke-slate-900 transition-all group-hover/pt:r-8" strokeWidth="3" />
+              <circle 
+                cx={getX(d.updatedAt)} 
+                cy={getY(d.progress)} 
+                r="7" 
+                className="fill-white dark:fill-indigo-400 stroke-indigo-600 dark:stroke-slate-900 transition-all group-hover/pt:r-9" 
+                strokeWidth="4" 
+              />
             </g>
           ))}
         </svg>
       </div>
 
-      <div className="flex justify-between mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+      <div className="flex justify-between mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
         <div className="flex flex-col">
           <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Inception</span>
           <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{new Date(startTime).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
