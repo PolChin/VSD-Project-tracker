@@ -90,7 +90,10 @@ const App: React.FC = () => {
         };
       }) as Project[];
       
-      setProjects(projectsData);
+      // CRITICAL: Filter out soft-deleted projects
+      const visibleProjects = projectsData.filter(p => p.status !== 'Mark deleted');
+      
+      setProjects(visibleProjects);
       setLoading(false);
     }, (error: any) => {
       console.error("Firestore Error:", error?.message || "Internal Error");
