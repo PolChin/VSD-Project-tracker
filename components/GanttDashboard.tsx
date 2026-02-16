@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Project, Task, MasterData, Milestone } from '../types';
-import { 
-  CalendarDays, 
-  LayoutGrid, 
-  Columns, 
-  Target, 
-  ChevronDown, 
-  ChevronRight, 
-  ListChecks, 
-  Maximize2, 
+import {
+  CalendarDays,
+  LayoutGrid,
+  Columns,
+  Target,
+  ChevronDown,
+  ChevronRight,
+  ListChecks,
+  Maximize2,
   Minimize2,
   XCircle,
   Search,
@@ -39,14 +39,14 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
     leader: '',
     status: ''
   });
-  
+
   const mainScrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   const now = new Date();
   const currentYear = now.getFullYear();
   const rangeStartYear = currentYear - 1;
   const rangeEndYear = currentYear + 2;
-  
+
   const startDate = new Date(`${rangeStartYear}-01-01`).getTime();
   const endDate = new Date(`${rangeEndYear}-12-31`).getTime();
   const totalDuration = endDate - startDate;
@@ -93,15 +93,15 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
       const pDept = (p.department || '').toString().trim().toUpperCase();
       const fDept = (filters.department || '').toString().trim().toUpperCase();
       const matchDept = !filters.department || pDept === fDept;
-      
+
       const pLeader = (p.leader || '').toString().trim().toUpperCase();
       const fLeader = (filters.leader || '').toString().trim().toUpperCase();
       const matchLeader = !filters.leader || pLeader === fLeader;
-      
+
       const pStatus = (p.status || '').toString().trim().toUpperCase();
       const fStatus = (filters.status || '').toString().trim().toUpperCase();
       const matchStatus = !filters.status || pStatus === fStatus;
-        
+
       return matchDept && matchLeader && matchStatus;
     });
   }, [projects, filters]);
@@ -123,24 +123,24 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                 {year}
               </div>
               <div className="flex-grow bg-white dark:bg-slate-900">
-                   <div className="flex h-full items-center">
-                    {viewMode === 'quarter' && [1, 2, 3, 4].map(q => (
-                      <div key={q} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-800 last:border-0">Q{q}</div>
-                    ))}
-                    {viewMode === 'month' && monthNames.map(m => (
-                      <div key={m} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-800 last:border-0">{m}</div>
-                    ))}
-                    {viewMode === 'week' && monthNames.map((m) => (
-                      <div key={m} className="flex-grow border-r border-slate-100 dark:border-slate-800 last:border-0 h-full flex flex-col justify-center">
-                        <div className="text-[11px] text-center text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter leading-none">{m}</div>
-                        <div className="flex justify-around mt-0.5">
-                          {[1, 2, 3, 4].map(w => (
-                            <div key={w} className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">W{w}</div>
-                          ))}
-                        </div>
+                <div className="flex h-full items-center">
+                  {viewMode === 'quarter' && [1, 2, 3, 4].map(q => (
+                    <div key={q} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-800 last:border-0">Q{q}</div>
+                  ))}
+                  {viewMode === 'month' && monthNames.map(m => (
+                    <div key={m} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-800 last:border-0">{m}</div>
+                  ))}
+                  {viewMode === 'week' && monthNames.map((m) => (
+                    <div key={m} className="flex-grow border-r border-slate-100 dark:border-slate-800 last:border-0 h-full flex flex-col justify-center">
+                      <div className="text-[11px] text-center text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter leading-none">{m}</div>
+                      <div className="flex justify-around mt-0.5">
+                        {[1, 2, 3, 4].map(w => (
+                          <div key={w} className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">W{w}</div>
+                        ))}
                       </div>
-                    ))}
-                   </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           );
@@ -155,7 +155,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
   return (
     <div className="flex flex-col gap-4">
       <div className="bg-white/80 dark:bg-slate-900/60 glass rounded-2xl p-4 shadow-lg overflow-hidden flex flex-col">
-        
+
         <div className="flex flex-col xl:flex-row items-center justify-between mb-4 gap-4">
           <div className="flex-shrink-0">
             <h3 className="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2 leading-none">
@@ -166,34 +166,34 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
 
           <div className="flex flex-wrap items-center justify-end gap-3 flex-grow">
             <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800 p-1 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:border-indigo-200 dark:hover:border-indigo-800">
-              <select 
+              <select
                 value={filters.department}
-                onChange={(e) => setFilters({...filters, department: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, department: e.target.value })}
                 className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
               >
                 <option value="" className="dark:bg-slate-800">Owner's Dept.</option>
                 {masterData.departments.map(d => <option key={d} value={d} className="dark:bg-slate-800">{d}</option>)}
               </select>
               <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-              <select 
+              <select
                 value={filters.leader}
-                onChange={(e) => setFilters({...filters, leader: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, leader: e.target.value })}
                 className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
               >
                 <option value="" className="dark:bg-slate-800">Leader</option>
                 {masterData.leaders.map(l => <option key={l} value={l} className="dark:bg-slate-800">{l}</option>)}
               </select>
               <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-              <select 
+              <select
                 value={filters.status}
-                onChange={(e) => setFilters({...filters, status: e.target.value})}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
               >
                 <option value="" className="dark:bg-slate-800">Status</option>
                 {masterData.statuses.map(s => <option key={s.id} value={s.name} className="dark:bg-slate-800">{s.name}</option>)}
               </select>
               {(filters.department || filters.leader || filters.status) && (
-                <button 
+                <button
                   onClick={() => setFilters({ department: '', leader: '', status: '' })}
                   className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 rounded-full transition-all"
                 >
@@ -214,7 +214,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                 <button onClick={collapseAll} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all"><Minimize2 size={14} /></button>
               </div>
 
-              <button 
+              <button
                 onClick={() => {
                   if (mainScrollContainerRef.current) {
                     const todayPos = ((now.getTime() - startDate) / totalDuration) * timelineWidth;
@@ -226,15 +226,14 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
               >
                 <Target size={16} />
               </button>
-              
+
               <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
                 {['week', 'month', 'quarter'].map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setViewMode(mode as ViewMode)}
-                    className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${
-                      viewMode === mode ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500'
-                    }`}
+                    className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500'
+                      }`}
                   >
                     {mode}
                   </button>
@@ -245,25 +244,25 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
         </div>
 
         <div className="relative border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-[600px] flex flex-col shadow-inner">
-          <div 
+          <div
             ref={mainScrollContainerRef}
             className="w-full flex-grow overflow-auto relative"
           >
             <div className="min-h-full flex flex-col relative" style={{ width: `${SIDEBAR_WIDTH + timelineWidth}px` }}>
-              
+
               <div className="flex sticky top-0 z-[160] bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 shadow-sm">
-                <div 
-                  className="sticky left-0 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex items-center px-4 z-[170] shadow-sm" 
+                <div
+                  className="sticky left-0 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex items-center px-4 z-[170] shadow-sm"
                   style={{ width: `${SIDEBAR_WIDTH}px`, height: `${HEADER_HEIGHT}px` }}
                 >
                   <span className="text-[13px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Projects</span>
                 </div>
                 <div className="flex-grow bg-white dark:bg-slate-900">
-                   {renderTimelineHeaderContent()}
+                  {renderTimelineHeaderContent()}
                 </div>
               </div>
 
-              <div 
+              <div
                 className="absolute top-0 bottom-0 w-[1px] bg-rose-500 z-[155] pointer-events-none opacity-60"
                 style={{ left: `${SIDEBAR_WIDTH + (getTimelinePosition(now.toISOString()) || 0) * (timelineWidth / 100)}px` }}
               />
@@ -274,7 +273,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                   const taskDates = project.tasks?.flatMap(t => [new Date(t.startDate).getTime(), new Date(t.endDate).getTime()]) || [];
                   const pStart = taskDates.length > 0 ? Math.min(...taskDates) : startDate;
                   const pEnd = taskDates.length > 0 ? Math.max(...taskDates) : endDate;
-                  
+
                   const startPos = getTimelinePosition(new Date(pStart).toISOString()) || 0;
                   const endPos = getTimelinePosition(new Date(pEnd).toISOString()) || 100;
                   const barWidth = Math.max(endPos - startPos, 1);
@@ -284,10 +283,9 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                   return (
                     <React.Fragment key={project.id}>
                       <div className="flex border-b border-slate-100 dark:border-slate-800 group relative transition-all">
-                        <div 
-                          className={`sticky left-0 flex-shrink-0 z-[150] border-r border-slate-200 dark:border-slate-800 flex items-center px-4 cursor-pointer transition-all shadow-sm ${
-                            isExpanded ? 'bg-indigo-50 dark:bg-slate-800' : 'bg-white dark:bg-slate-900'
-                          } hover:bg-slate-50 dark:hover:bg-slate-800`}
+                        <div
+                          className={`sticky left-0 flex-shrink-0 z-[150] border-r border-slate-200 dark:border-slate-800 flex items-center px-4 cursor-pointer transition-all shadow-sm ${isExpanded ? 'bg-indigo-50 dark:bg-slate-800' : 'bg-white dark:bg-slate-900'
+                            } hover:bg-slate-50 dark:hover:bg-slate-800`}
                           style={{ width: `${SIDEBAR_WIDTH}px`, height: `${PROJECT_ROW_HEIGHT}px` }}
                           onClick={() => toggleProject(project.id)}
                         >
@@ -301,25 +299,25 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                           </div>
                         </div>
 
-                        <div className="flex-grow relative h-[54px] z-0">
+                        <div className="flex-grow relative h-[54px]">
                           <div className="h-full flex items-center relative z-10 px-0.5">
-                             {hasTasks && (
-                                <div 
-                                  className="absolute h-6 bg-white dark:bg-slate-800 rounded-lg flex items-center overflow-hidden border border-slate-200 dark:border-slate-600 shadow-sm"
-                                  style={{ left: `${startPos}%`, width: `${barWidth}%` }}
-                                >
-                                  <div 
-                                    className="h-full opacity-90"
-                                    style={{ 
-                                        width: `${project.progress}%`,
-                                        backgroundColor: projectStatus?.color || '#6366f1'
-                                    }}
-                                  />
-                                  <span className="absolute left-2 text-[8px] font-black text-slate-800 dark:text-slate-100 pointer-events-none uppercase">
-                                    {project.progress}%
-                                  </span>
-                                </div>
-                              )}
+                            {hasTasks && (
+                              <div
+                                className="absolute h-6 bg-white dark:bg-slate-800 rounded-lg flex items-center overflow-hidden border border-slate-200 dark:border-slate-600 shadow-sm"
+                                style={{ left: `${startPos}%`, width: `${barWidth}%` }}
+                              >
+                                <div
+                                  className="h-full opacity-90"
+                                  style={{
+                                    width: `${project.progress}%`,
+                                    backgroundColor: projectStatus?.color || '#6366f1'
+                                  }}
+                                />
+                                <span className="absolute left-2 text-[8px] font-black text-slate-800 dark:text-slate-100 pointer-events-none uppercase">
+                                  {project.progress}%
+                                </span>
+                              </div>
+                            )}
                           </div>
 
                           {project.milestones?.map((milestone) => {
@@ -327,23 +325,23 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                             if (mPos === null) return null;
                             const isAchieved = !!milestone.completed;
                             return (
-                              <div 
+                              <div
                                 key={milestone.id}
-                                className="absolute top-0 z-40 group/milestone cursor-pointer hover:z-[100]"
+                                className="absolute top-0 z-40 group/milestone cursor-pointer hover:z-[200]"
                                 style={{ left: `${mPos}%`, transform: 'translateX(-50%)' }}
                               >
                                 <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[10px] ${isAchieved ? 'border-t-emerald-500' : 'border-t-rose-600 dark:border-t-rose-500'} shadow-sm`}></div>
-                                
-                                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-slate-950 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/milestone:opacity-100 group-hover/milestone:visible transition-all duration-200 z-[150] min-w-[160px] pointer-events-none border border-slate-700 dark:border-slate-800">
-                                   <div className="flex items-center gap-2 mb-1 border-b border-slate-700 dark:border-slate-800 pb-1">
-                                      <Flag size={10} className={`${isAchieved ? 'text-emerald-500 fill-emerald-500' : 'text-rose-500 fill-rose-500'}`} />
-                                      <span className="text-[10px] font-black uppercase tracking-widest leading-none">Milestone</span>
-                                   </div>
-                                   <div className="text-[11px] font-bold text-white mb-0.5 leading-tight">{milestone.name}</div>
-                                   <div className="text-[9px] text-slate-300 dark:text-slate-400 font-medium mb-1.5 leading-snug">{milestone.description || 'No description'}</div>
-                                   <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-md inline-block uppercase tracking-wider border ${isAchieved ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-rose-400 bg-rose-400/10 border-rose-400/20'}`}>
-                                      {milestone.date}
-                                   </div>
+
+                                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-slate-950 text-white p-3 rounded-xl shadow-2xl opacity-0 invisible group-hover/milestone:opacity-100 group-hover/milestone:visible transition-all duration-200 z-[250] min-w-[160px] pointer-events-none border border-slate-700 dark:border-slate-800">
+                                  <div className="flex items-center gap-2 mb-1 border-b border-slate-700 dark:border-slate-800 pb-1">
+                                    <Flag size={10} className={`${isAchieved ? 'text-emerald-500 fill-emerald-500' : 'text-rose-500 fill-rose-500'}`} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest leading-none">Milestone</span>
+                                  </div>
+                                  <div className="text-[11px] font-bold text-white mb-0.5 leading-tight">{milestone.name}</div>
+                                  <div className="text-[9px] text-slate-300 dark:text-slate-400 font-medium mb-1.5 leading-snug">{milestone.description || 'No description'}</div>
+                                  <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-md inline-block uppercase tracking-wider border ${isAchieved ? 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20' : 'text-rose-400 bg-rose-400/10 border-rose-400/20'}`}>
+                                    {milestone.date}
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -358,7 +356,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
 
                         return (
                           <div key={task.id} className="flex border-b border-slate-100 dark:border-slate-800 relative transition-all">
-                            <div 
+                            <div
                               className="sticky left-0 flex-shrink-0 z-[150] bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex items-center pl-8 pr-4 shadow-sm"
                               style={{ width: `${SIDEBAR_WIDTH}px`, height: `${TASK_ROW_HEIGHT}px` }}
                             >
@@ -366,13 +364,13 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                               <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold truncate">{task.name}</span>
                             </div>
 
-                            <div className="flex-grow relative h-[32px] z-0">
-                               <div 
-                                  className="absolute h-3.5 bg-indigo-50 dark:bg-slate-800 border border-indigo-100 dark:border-slate-700 rounded-md overflow-hidden z-10 shadow-sm"
-                                  style={{ left: `${tStartPos}%`, width: `${tBarWidth}%`, top: '50%', transform: 'translateY(-50%)' }}
-                                >
-                                  <div className="h-full bg-indigo-500/50 dark:bg-indigo-400/50" style={{ width: `${task.progress}%` }} />
-                                </div>
+                            <div className="flex-grow relative h-[32px]">
+                              <div
+                                className="absolute h-3.5 bg-indigo-50 dark:bg-slate-800 border border-indigo-100 dark:border-slate-700 rounded-md overflow-hidden z-10 shadow-sm"
+                                style={{ left: `${tStartPos}%`, width: `${tBarWidth}%`, top: '50%', transform: 'translateY(-50%)' }}
+                              >
+                                <div className="h-full bg-indigo-500/50 dark:bg-indigo-400/50" style={{ width: `${task.progress}%` }} />
+                              </div>
                             </div>
                           </div>
                         );
