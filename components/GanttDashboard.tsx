@@ -31,7 +31,7 @@ interface GanttDashboardProps {
 type ViewMode = 'week' | 'month' | 'quarter';
 
 const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   const [filters, setFilters] = useState({
@@ -62,8 +62,12 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
   useEffect(() => {
     if (mainScrollContainerRef.current) {
       const container = mainScrollContainerRef.current;
-      const todayPos = ((now.getTime() - startDate) / totalDuration) * timelineWidth;
-      container.scrollLeft = todayPos - container.clientWidth / 3;
+      // Calculate position for the 1st day of the month that is 2 months before today
+      const twoMonthsAgo = new Date(now);
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+      twoMonthsAgo.setDate(1); // Set to the 1st day of that month
+      const targetPos = ((twoMonthsAgo.getTime() - startDate) / totalDuration) * timelineWidth;
+      container.scrollLeft = targetPos;
     }
   }, [viewMode, zoomScale, startDate, totalDuration]);
 

@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Project, MasterData } from '../types';
-import { User, Building2, PlusCircle, Edit3, Info, Search, Filter, XCircle } from 'lucide-react';
+import { User, Building2, PlusCircle, Edit3, Info, Search, Filter, XCircle, FileSpreadsheet, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface ProjectListProps {
   projects: Project[];
@@ -10,6 +11,11 @@ interface ProjectListProps {
   onEditProject: (project: Project) => void;
 }
 
+type SortConfig = {
+  key: 'name' | 'description' | 'leader' | 'department' | 'status' | 'progress';
+  direction: 'asc' | 'desc';
+} | null;
+
 const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNew, onEditProject }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -17,6 +23,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
     leader: '',
     status: ''
   });
+  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
   const [colWidths, setColWidths] = useState<Record<string, number>>({
     name: 360,
@@ -55,23 +62,125 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
     document.body.style.cursor = 'default';
   };
 
+  const handleSort = (key: SortConfig['key']) => {
+    setSortConfig(prevSort => {
+      if (!prevSort || prevSort.key !== key) {
+        return { key, direction: 'asc' };
+      }
+      if (prevSort.direction === 'asc') {
+        return { key, direction: 'desc' };
+      }
+      return null; // Clear sort on third click
+    });
+  };
+
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
-      const matchSearch = !searchTerm || 
+      const matchSearch = !searchTerm ||
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchDept = !filters.department || p.department === filters.department;
       const matchLeader = !filters.leader || p.leader === filters.leader;
       const matchStatus = !filters.status || p.status === filters.status;
-        
+
       return matchSearch && matchDept && matchLeader && matchStatus;
     });
   }, [projects, searchTerm, filters]);
 
+  const sortedProjects = useMemo(() => {
+    if (!sortConfig) {
+      return filteredProjects;
+    }
+
+    const sorted = [...filteredProjects].sort((a, b) => {
+      let aValue: string | number = '';
+      let bValue: string | number = '';
+
+      switch (sortConfig.key) {
+        case 'name':
+          aValue = a.name || '';
+          bValue = b.name || '';
+          break;
+        case 'description':
+          aValue = a.description || '';
+          bValue = b.description || '';
+          break;
+        case 'leader':
+          aValue = a.leader || '';
+          bValue = b.leader || '';
+          break;
+        case 'department':
+          aValue = a.department || '';
+          bValue = b.department || '';
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        case 'progress':
+          aValue = a.progress || 0;
+          bValue = b.progress || 0;
+          break;
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+
+    return sorted;
+  }, [filteredProjects, sortConfig]);
+
   const clearFilters = () => {
     setSearchTerm('');
     setFilters({ department: '', leader: '', status: '' });
+  };
+
+  const exportToExcel = () => {
+    // Flatten data: one row per milestone, or one row if no milestones
+    const exportData = sortedProjects.flatMap(project => {
+      if (project.milestones && project.milestones.length > 0) {
+        return project.milestones.map(milestone => ({
+          'Project name': project.name || '',
+          'Leader': project.leader || '',
+          'Department': project.department || '',
+          'Progress (%)': project.progress || 0,
+          'Milestone name': milestone.name || '',
+          'Milestone description': milestone.description || '',
+          'Milestone date': milestone.date || '',
+          'Milestone status': milestone.completed ? 'Completed' : 'Pending'
+        }));
+      } else {
+        // Project with no milestones
+        return [{
+          'Project name': project.name || '',
+          'Leader': project.leader || '',
+          'Department': project.department || '',
+          'Progress (%)': project.progress || 0,
+          'Milestone name': '',
+          'Milestone description': '',
+          'Milestone date': '',
+          'Milestone status': ''
+        }];
+      }
+    });
+
+    // Create workbook and worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Projects');
+
+    // Generate timestamp for filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `projects_export_${timestamp}.xlsx`;
+
+    // Download file
+    XLSX.writeFile(workbook, filename);
   };
 
   return (
@@ -81,7 +190,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
           <h2 className="text-xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
             Project Portfolio
             <span className="text-[9px] bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-md font-black">
-              {filteredProjects.length} NODES
+              {sortedProjects.length} NODES
             </span>
           </h2>
         </div>
@@ -89,7 +198,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
         <div className="flex flex-wrap items-center gap-3 flex-grow justify-end w-full xl:w-auto">
           <div className="relative group flex-grow max-w-md">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-            <input 
+            <input
               type="text"
               placeholder="Search projects..."
               value={searchTerm}
@@ -102,27 +211,27 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
             <div className="flex items-center gap-2 px-2 border-r border-slate-300 dark:border-slate-700">
               <Filter size={12} className="text-slate-400" />
             </div>
-            <select 
+            <select
               value={filters.department}
-              onChange={(e) => setFilters({...filters, department: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, department: e.target.value })}
               className="bg-transparent border-none text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 cursor-pointer outline-none min-w-[100px]"
             >
               <option value="" className="dark:bg-slate-800">All Dept</option>
               {masterData.departments.map(d => <option key={d} value={d} className="dark:bg-slate-800">{d}</option>)}
             </select>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-            <select 
+            <select
               value={filters.leader}
-              onChange={(e) => setFilters({...filters, leader: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, leader: e.target.value })}
               className="bg-transparent border-none text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 cursor-pointer outline-none min-w-[100px]"
             >
               <option value="" className="dark:bg-slate-800">All Leaders</option>
               {masterData.leaders.map(l => <option key={l} value={l} className="dark:bg-slate-800">{l}</option>)}
             </select>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-            <select 
+            <select
               value={filters.status}
-              onChange={(e) => setFilters({...filters, status: e.target.value})}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               className="bg-transparent border-none text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 cursor-pointer outline-none min-w-[100px]"
             >
               <option value="" className="dark:bg-slate-800">All Status</option>
@@ -130,7 +239,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
             </select>
 
             {(filters.department || filters.leader || filters.status || searchTerm) && (
-              <button 
+              <button
                 onClick={clearFilters}
                 className="ml-1 p-1.5 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 rounded-lg transition-all"
                 title="Clear Filters"
@@ -140,7 +249,16 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
             )}
           </div>
 
-          <button 
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all font-black text-[10px] shadow-lg shadow-emerald-100 dark:shadow-none uppercase tracking-widest flex-shrink-0 active:scale-95"
+            title="Export filtered projects to Excel"
+          >
+            <FileSpreadsheet size={16} />
+            EXPORT TO EXCEL
+          </button>
+
+          <button
             onClick={onAddNew}
             className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-all font-black text-[10px] shadow-lg shadow-indigo-100 dark:shadow-none uppercase tracking-widest flex-shrink-0 active:scale-95"
           >
@@ -156,22 +274,40 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 sticky top-0 z-20 select-none">
                 {[
-                  { key: 'name', label: 'Project Name' },
-                  { key: 'description', label: 'Description' },
-                  { key: 'leader', label: 'Leader' },
-                  { key: 'department', label: 'Owner\'s Dept.' },
-                  { key: 'status', label: 'Status' },
-                  { key: 'progress', label: 'Progress' },
-                  { key: 'action', label: 'Action' }
+                  { key: 'name', label: 'Project Name', sortable: true },
+                  { key: 'description', label: 'Description', sortable: true },
+                  { key: 'leader', label: 'Leader', sortable: true },
+                  { key: 'department', label: 'Owner\'s Dept.', sortable: true },
+                  { key: 'status', label: 'Status', sortable: true },
+                  { key: 'progress', label: 'Progress', sortable: true },
+                  { key: 'action', label: 'Action', sortable: false }
                 ].map((col) => (
-                  <th 
-                    key={col.key} 
+                  <th
+                    key={col.key}
                     className="relative group px-5 py-3.5 text-[11px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest transition-colors hover:text-indigo-500 bg-white dark:bg-slate-900"
                     style={{ width: `${colWidths[col.key]}px` }}
                   >
-                    <div className="truncate">{col.label}</div>
+                    <div
+                      className={`flex items-center gap-2 ${col.sortable ? 'cursor-pointer' : ''}`}
+                      onClick={() => col.sortable && handleSort(col.key as SortConfig['key'])}
+                    >
+                      <span className="truncate">{col.label}</span>
+                      {col.sortable && (
+                        <span className="flex-shrink-0">
+                          {sortConfig?.key === col.key ? (
+                            sortConfig.direction === 'asc' ? (
+                              <ArrowUp size={12} className="text-indigo-500" />
+                            ) : (
+                              <ArrowDown size={12} className="text-indigo-500" />
+                            )
+                          ) : (
+                            <ArrowUpDown size={12} className="opacity-30" />
+                          )}
+                        </span>
+                      )}
+                    </div>
                     {col.key !== 'action' && (
-                      <div 
+                      <div
                         onMouseDown={(e) => startResize(col.key, e)}
                         className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize group-hover:bg-indigo-500/20 active:bg-indigo-500 transition-all z-10"
                       />
@@ -181,9 +317,9 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-              {filteredProjects.map((project) => {
+              {sortedProjects.map((project) => {
                 const status = masterData.statuses.find(s => s.name === project?.status);
-                
+
                 return (
                   <tr key={project.id} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20 transition-colors group">
                     <td className="px-5 py-3.5 align-middle">
@@ -214,7 +350,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-center align-middle">
-                      <span 
+                      <span
                         className="inline-block px-3 py-1 rounded-xl text-[8px] font-black uppercase tracking-wider text-white shadow-sm min-w-[90px]"
                         style={{ backgroundColor: status?.color || '#94a3b8' }}
                       >
@@ -224,7 +360,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                     <td className="px-4 py-3.5 align-middle">
                       <div className="flex items-center gap-3">
                         <div className="flex-grow h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
-                          <div 
+                          <div
                             className="h-full bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(79,70,229,0.3)]"
                             style={{ width: `${project?.progress || 0}%` }}
                           />
@@ -235,7 +371,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                       </div>
                     </td>
                     <td className="px-6 py-3.5 text-right align-middle">
-                      <button 
+                      <button
                         onClick={() => onEditProject(project)}
                         className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all shadow-sm active:scale-90"
                         title="Edit Project"
