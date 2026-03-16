@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
-import { 
-  db, 
-  collection, 
-  query, 
-  orderBy, 
-  onSnapshot, 
+import {
+  db,
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
   getDocs
 } from './firebase';
 import { Project, MasterData, Task, Milestone } from './types';
@@ -15,17 +14,27 @@ import ProjectList from './components/ProjectList';
 import ProjectForm from './components/ProjectForm';
 import VarianceUI from './components/VarianceUI';
 import LeaderAnalytics from './components/LeaderAnalytics';
-import { LayoutDashboard, ListTodo, History, X, Sun, Moon, Users } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Layers, 
+  Activity, 
+  Sun, 
+  Moon, 
+  Users, 
+  Plus,
+  Box,
+  Fingerprint
+} from 'lucide-react';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'projects' | 'history' | 'analytics'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'portfolio' | 'variance' | 'leaders'>('timeline');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' || 
-           (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    return localStorage.getItem('theme') === 'dark' ||
+      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
   const [masterData, setMasterData] = useState<MasterData>({
     leaders: [],
@@ -50,7 +59,7 @@ const App: React.FC = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const projectsData = snapshot.docs.map(doc => {
         const data = doc.data({ serverTimestamps: 'estimate' });
-        
+
         let updatedStr = new Date().toISOString();
         if (data.updatedAt) {
           if (typeof data.updatedAt.toDate === 'function') {
@@ -61,7 +70,7 @@ const App: React.FC = () => {
             updatedStr = data.updatedAt;
           }
         }
-        
+
         return {
           id: doc.id,
           name: String(data.name || 'Untitled'),
@@ -89,10 +98,10 @@ const App: React.FC = () => {
           description: String(data.description || '')
         };
       }) as Project[];
-      
+
       // CRITICAL: Filter out soft-deleted projects
       const visibleProjects = projectsData.filter(p => p.status !== 'Mark deleted');
-      
+
       setProjects(visibleProjects);
       setLoading(false);
     }, (error: any) => {
@@ -133,93 +142,143 @@ const App: React.FC = () => {
     setEditingProject(project);
   };
 
-  if (loading) return <LoadingScreen message="Connecting to VSD Project summary..." />;
+  if (loading) return <LoadingScreen message="Initializing Workspace..." />;
 
   const isModalOpen = showAddModal || editingProject !== null;
 
   return (
-    <div className="w-full mx-auto px-4 py-4 min-h-screen flex flex-col">
-      <header className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4 w-full">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold text-slate-800 dark:text-white tracking-tight">
-              VSD <span className="text-indigo-600 dark:text-indigo-400">Project summary</span>
-            </h1>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">Project Portfolio Intelligence</p>
+    <div className="h-screen flex flex-col overflow-y-scroll overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 transition-colors duration-300">
+      
+      {/* Top Navigation Bar */}
+      <nav className="flex-shrink-0 sticky top-0 z-50 w-full bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16 items-center">
+            
+            {/* Branding */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                <Box size={18} strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-extrabold text-base tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300">
+                  VSD System
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 mt-0.5">
+                  Tracker
+                </span>
+              </div>
+            </div>
+
+            {/* Desktop Navigation Tabs */}
+            <div className="hidden md:flex items-center space-x-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl">
+              {[
+                { id: 'timeline', icon: LayoutDashboard, label: 'Timeline' },
+                { id: 'portfolio', icon: Layers, label: 'Portfolio' },
+                { id: 'variance', icon: Activity, label: 'Variance' },
+                { id: 'leaders', icon: Users, label: 'Leaders' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`
+                    flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ease-out
+                    ${activeTab === tab.id
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-slate-200 dark:ring-slate-600'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-slate-700/50'
+                    }
+                  `}
+                >
+                  <tab.icon size={16} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsDark(!isDark)}
+                className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors"
+                aria-label="Toggle Dark Mode"
+              >
+                {isDark ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="hidden sm:flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95"
+              >
+                <Plus size={16} strokeWidth={2.5} />
+                <span>New Project</span>
+              </button>
+            </div>
+            
           </div>
-          <button 
-            onClick={() => setIsDark(!isDark)}
-            className="p-2 rounded-xl bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:scale-110 transition-all"
-            aria-label="Toggle Dark Mode"
-          >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
         </div>
+      </nav>
 
-        <nav className="flex bg-indigo-100/50 dark:bg-slate-800/50 p-1 rounded-2xl glass shadow-lg">
-          {[
-            { id: 'dashboard', icon: LayoutDashboard, label: 'Timeline' },
-            { id: 'projects', icon: ListTodo, label: 'Portfolio' },
-            { id: 'history', icon: History, label: 'Analysis' },
-            { id: 'analytics', icon: Users, label: 'Leaders' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-6 py-2 rounded-xl transition-all duration-300 font-bold text-xs ${
-                activeTab === tab.id 
-                ? 'bg-indigo-600 text-white shadow-md scale-105' 
-                : 'text-indigo-900 dark:text-slate-300 hover:bg-white/50 dark:hover:bg-slate-700'
-              }`}
-            >
-              <tab.icon size={14} />
-              <span className="hidden sm:inline uppercase tracking-widest">{tab.label}</span>
-            </button>
-          ))}
-        </nav>
-      </header>
-
-      <main className="flex-grow animate-in fade-in duration-500 w-full">
-        {activeTab === 'dashboard' && <GanttDashboard projects={projects} masterData={masterData} />}
-        {activeTab === 'projects' && (
-          <ProjectList 
-            projects={projects} 
-            masterData={masterData} 
-            onAddNew={() => setShowAddModal(true)} 
+      {/* Main Content Area */}
+      <main className="flex-grow w-full px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500 ease-out">
+        {activeTab === 'timeline' && <GanttDashboard projects={projects} masterData={masterData} />}
+        {activeTab === 'portfolio' && (
+          <ProjectList
+            projects={projects}
+            masterData={masterData}
+            onAddNew={() => setShowAddModal(true)}
             onEditProject={handleEditProject}
           />
         )}
-        {activeTab === 'history' && <VarianceUI projects={projects} />}
-        {activeTab === 'analytics' && <LeaderAnalytics projects={projects} masterData={masterData} />}
+        {activeTab === 'variance' && <VarianceUI projects={projects} />}
+        {activeTab === 'leaders' && <LeaderAnalytics projects={projects} masterData={masterData} />}
       </main>
 
+      {/* Modals */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm"
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div
+            className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity"
             onClick={handleCloseModal}
           />
-          <div className="relative w-full max-w-7xl max-h-[95vh] overflow-y-auto no-scrollbar">
-            <button 
-              onClick={handleCloseModal}
-              className="absolute top-4 right-6 z-[110] p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-white dark:hover:bg-slate-700 rounded-full text-slate-400 dark:text-slate-400 hover:text-rose-500 transition-all shadow-md border dark:border-slate-700"
-            >
-              <X size={20} />
-            </button>
-            <ProjectForm 
-              masterData={masterData} 
-              onComplete={handleCloseModal} 
-              initialProject={editingProject || undefined}
-            />
+          <div className="relative w-full max-w-7xl max-h-[95vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="flex-grow overflow-y-auto custom-scrollbar p-6">
+               <ProjectForm
+                  masterData={masterData}
+                  onComplete={handleCloseModal}
+                  initialProject={editingProject || undefined}
+                  onClose={handleCloseModal} // Assuming ProjectForm handles its own close button if passed, otherwise we can wrap it
+                />
+            </div>
           </div>
         </div>
       )}
 
-      <footer className="mt-8 pb-4 text-center text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] w-full">
-        &copy; 2024 VSD Project summary • Executive Control Panel
+      {/* Footer System Status */}
+      <footer className="flex-shrink-0 mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+           
+           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+             <Fingerprint size={14} />
+             <span className="text-[10px] font-bold tracking-widest uppercase">VSD Secure Node • v2.0</span>
+           </div>
+
+           <div className="flex flex-wrap items-center justify-center gap-4">
+              {masterData.statuses.map((status) => (
+                <div key={status.id} className="flex items-center gap-1.5">
+                  <div
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: status.color }}
+                  />
+                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                    {status.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+        </div>
       </footer>
     </div>
   );
 };
 
 export default App;
+

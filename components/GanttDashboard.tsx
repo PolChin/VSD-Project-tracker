@@ -22,6 +22,7 @@ import {
   Minus,
   CheckCircle2
 } from 'lucide-react';
+import MultiSelectFilter from './MultiSelectFilter';
 
 interface GanttDashboardProps {
   projects: Project[];
@@ -35,9 +36,9 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
   const [filters, setFilters] = useState({
-    department: '',
-    leader: '',
-    status: ''
+    department: [] as string[],
+    leader: [] as string[],
+    status: [] as string[]
   });
 
   const mainScrollContainerRef = useRef<HTMLDivElement>(null);
@@ -95,16 +96,16 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
   const filteredProjects = useMemo(() => {
     return projects.filter(p => {
       const pDept = (p.department || '').toString().trim().toUpperCase();
-      const fDept = (filters.department || '').toString().trim().toUpperCase();
-      const matchDept = !filters.department || pDept === fDept;
+      const matchDept = filters.department.length === 0 ||
+        filters.department.some(f => f.trim().toUpperCase() === pDept);
 
       const pLeader = (p.leader || '').toString().trim().toUpperCase();
-      const fLeader = (filters.leader || '').toString().trim().toUpperCase();
-      const matchLeader = !filters.leader || pLeader === fLeader;
+      const matchLeader = filters.leader.length === 0 ||
+        filters.leader.some(f => f.trim().toUpperCase() === pLeader);
 
       const pStatus = (p.status || '').toString().trim().toUpperCase();
-      const fStatus = (filters.status || '').toString().trim().toUpperCase();
-      const matchStatus = !filters.status || pStatus === fStatus;
+      const matchStatus = filters.status.length === 0 ||
+        filters.status.some(f => f.trim().toUpperCase() === pStatus);
 
       return matchDept && matchLeader && matchStatus;
     });
@@ -157,95 +158,113 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
   const handleZoomOut = () => setZoomScale(prev => Math.max(prev - 0.2, 0.4));
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="bg-white/80 dark:bg-slate-900/60 glass rounded-2xl p-4 shadow-lg overflow-hidden flex flex-col">
+    <div className="w-full flex flex-col gap-6">
 
-        <div className="flex flex-col xl:flex-row items-center justify-between mb-4 gap-4">
-          <div className="flex-shrink-0">
-            <h3 className="text-lg font-extrabold text-slate-800 dark:text-white flex items-center gap-2 leading-none">
-              Timeline
-              <span className="text-[8px] bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-black uppercase">Live</span>
-            </h3>
+      {/* Top Action Bar */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl flex flex-col xl:flex-row justify-between items-center gap-4 shadow-sm border border-slate-200 dark:border-slate-800 relative z-[200]">
+        
+        <div className="flex items-center gap-3 w-full xl:w-auto">
+          <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex-shrink-0">
+             <CalendarDays size={24} className="text-indigo-600 dark:text-indigo-400" />
           </div>
-
-          <div className="flex flex-wrap items-center justify-end gap-3 flex-grow">
-            <div className="flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800 p-1 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-sm transition-all hover:border-indigo-200 dark:hover:border-indigo-800">
-              <select
-                value={filters.department}
-                onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-                className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
-              >
-                <option value="" className="dark:bg-slate-800">Owner's Dept.</option>
-                {masterData.departments.map(d => <option key={d} value={d} className="dark:bg-slate-800">{d}</option>)}
-              </select>
-              <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-              <select
-                value={filters.leader}
-                onChange={(e) => setFilters({ ...filters, leader: e.target.value })}
-                className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
-              >
-                <option value="" className="dark:bg-slate-800">Leader</option>
-                {masterData.leaders.map(l => <option key={l} value={l} className="dark:bg-slate-800">{l}</option>)}
-              </select>
-              <div className="w-px h-4 bg-slate-300 dark:bg-slate-700" />
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="bg-transparent border-none text-[9px] font-black text-slate-600 dark:text-slate-300 uppercase focus:ring-0 outline-none cursor-pointer px-2 min-w-[90px]"
-              >
-                <option value="" className="dark:bg-slate-800">Status</option>
-                {masterData.statuses.map(s => <option key={s.id} value={s.name} className="dark:bg-slate-800">{s.name}</option>)}
-              </select>
-              {(filters.department || filters.leader || filters.status) && (
-                <button
-                  onClick={() => setFilters({ department: '', leader: '', status: '' })}
-                  className="p-1 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 rounded-full transition-all"
-                >
-                  <XCircle size={14} />
-                </button>
-              )}
-            </div>
-
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-              <button onClick={handleZoomOut} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-all active:scale-90" title="Zoom Out"><Minus size={14} /></button>
-              <div className="w-px h-4 self-center bg-slate-200 dark:bg-slate-700 mx-0.5" />
-              <button onClick={handleZoomIn} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition-all active:scale-90" title="Zoom In"><Plus size={14} /></button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                <button onClick={expandAll} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all"><Maximize2 size={14} /></button>
-                <button onClick={collapseAll} className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-md text-slate-500 dark:text-slate-400 transition-all"><Minimize2 size={14} /></button>
-              </div>
-
-              <button
-                onClick={() => {
-                  if (mainScrollContainerRef.current) {
-                    const todayPos = ((now.getTime() - startDate) / totalDuration) * timelineWidth;
-                    mainScrollContainerRef.current.scrollTo({ left: todayPos - mainScrollContainerRef.current.clientWidth / 2, behavior: 'smooth' });
-                  }
-                }}
-                className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-indigo-500 dark:text-indigo-400 shadow-sm hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all"
-                title="Go to Today"
-              >
-                <Target size={16} />
-              </button>
-
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                {['week', 'month', 'quarter'].map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setViewMode(mode as ViewMode)}
-                    className={`px-3 py-1.5 rounded-md text-[9px] font-black uppercase transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:text-slate-500'
-                      }`}
-                  >
-                    {mode}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div>
+             <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+               Operational Timeline
+               <span className="flex items-center gap-1 text-[9px] bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-black uppercase shadow-sm">
+                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse blur-[1px]" />
+                  Live
+               </span>
+             </h3>
+             <p className="text-xs text-slate-500 font-medium tracking-wide">Project Scheduling & Milestones</p>
           </div>
         </div>
+
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto xl:justify-end">
+          
+          {/* Filters Suite */}
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 dark:bg-slate-950 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <MultiSelectFilter
+              label="Dept"
+              options={masterData.departments}
+              selectedValues={filters.department}
+              onChange={(values) => setFilters({ ...filters, department: values })}
+              className="w-[130px] flex-shrink-0"
+            />
+            <div className="hidden sm:block w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+            <MultiSelectFilter
+              label="Leader"
+              options={masterData.leaders}
+              selectedValues={filters.leader}
+              onChange={(values) => setFilters({ ...filters, leader: values })}
+              className="w-[130px] flex-shrink-0"
+            />
+            <div className="hidden sm:block w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+            <MultiSelectFilter
+              label="Status"
+              options={masterData.statuses.map(s => s.name)}
+              selectedValues={filters.status}
+              onChange={(values) => setFilters({ ...filters, status: values })}
+              className="w-[130px] flex-shrink-0"
+            />
+
+            <button
+              onClick={() => setFilters({ department: [], leader: [], status: [] })}
+              className={`ml-0.5 p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-all ${(filters.department.length > 0 || filters.leader.length > 0 || filters.status.length > 0) ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}
+              title="Clear Filters"
+            >
+              <XCircle size={18} />
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+             
+             {/* Zoom Controls */}
+             <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+               <button onClick={handleZoomOut} className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors shadow-sm" title="Zoom Out"><Minus size={14} /></button>
+               <div className="w-px h-4 self-center bg-slate-200 dark:bg-slate-800 mx-1" />
+               <button onClick={handleZoomIn} className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors shadow-sm" title="Zoom In"><Plus size={14} /></button>
+             </div>
+
+             {/* Expand/Collapse */}
+             <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+               <button onClick={expandAll} className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors shadow-sm" title="Expand All"><Maximize2 size={14} /></button>
+               <button onClick={collapseAll} className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 transition-colors shadow-sm" title="Collapse All"><Minimize2 size={14} /></button>
+             </div>
+
+             {/* View Modes */}
+             <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+               {['week', 'month', 'quarter'].map((mode) => (
+                 <button
+                   key={mode}
+                   onClick={() => setViewMode(mode as ViewMode)}
+                   className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                     viewMode === mode 
+                       ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm' 
+                       : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                   }`}
+                 >
+                   {mode}
+                 </button>
+               ))}
+             </div>
+             
+             {/* Jump to Today */}
+             <button
+               onClick={() => {
+                 if (mainScrollContainerRef.current) {
+                   const todayPos = ((now.getTime() - startDate) / totalDuration) * timelineWidth;
+                   mainScrollContainerRef.current.scrollTo({ left: todayPos - mainScrollContainerRef.current.clientWidth / 2, behavior: 'smooth' });
+                 }
+               }}
+               className="p-2.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors font-semibold shadow-sm ml-2"
+               title="Center on Today"
+             >
+               <Target size={16} />
+             </button>
+
+          </div>
+        </div>
+      </div>
 
         <div className="relative border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-[600px] flex flex-col shadow-inner">
           <div
@@ -387,7 +406,6 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
           </div>
         </div>
       </div>
-    </div>
   );
 };
 
