@@ -1,20 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { Project, MasterData } from '../types';
-import { 
-  Building2, 
-  Edit3, 
-  Search, 
-  XCircle, 
-  FileSpreadsheet, 
-  ArrowUpDown, 
-  ArrowUp, 
+import {
+  Building2,
+  Edit3,
+  Search,
+  XCircle,
+  FileSpreadsheet,
+  ArrowUpDown,
+  ArrowUp,
   ArrowDown,
   LayoutGrid,
   List,
   MoreVertical,
   Calendar,
   Layers,
-  Activity
+  Activity,
+  Presentation
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import MultiSelectFilter from './MultiSelectFilter';
@@ -24,6 +25,7 @@ interface ProjectListProps {
   masterData: MasterData;
   onAddNew: () => void;
   onEditProject: (project: Project) => void;
+  onUpdateProgress: (project: Project) => void;
 }
 
 type SortConfig = {
@@ -31,7 +33,7 @@ type SortConfig = {
   direction: 'asc' | 'desc';
 } | null;
 
-const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNew, onEditProject }) => {
+const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNew, onEditProject, onUpdateProgress }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     department: [] as string[],
@@ -135,14 +137,14 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
   };
 
   return (
-    <div className="w-full flex flex-col gap-6">
-      
+    <div className="w-full h-full flex flex-col gap-6 overflow-hidden">
+
       {/* Top Action Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl flex flex-col xl:flex-row justify-between items-center gap-4 shadow-sm border border-slate-200 dark:border-slate-800 relative z-50">
-        
+
         <div className="flex items-center gap-3 w-full xl:w-auto">
           <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex-shrink-0">
-             <Layers size={24} className="text-indigo-600 dark:text-indigo-400" />
+            <Layers size={24} className="text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Project Portfolio</h2>
@@ -151,7 +153,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto xl:justify-end">
-          
+
           {/* Search Input */}
           <div className="relative flex-grow max-w-sm">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -214,12 +216,12 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
       </div>
 
       {/* Table Layout for Projects */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm relative z-10 mb-20">
-        <div className="overflow-x-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative z-10 flex-grow overflow-hidden mb-2">
+        <div className="h-full overflow-auto relative rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white dark:bg-slate-900 custom-scrollbar">
           <table className="w-full text-left border-collapse">
-            <thead>
+            <thead className="sticky top-0 z-30 bg-white dark:bg-slate-900 shadow-sm">
               <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th 
+                <th
                   className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
                   onClick={() => handleSort('status')}
                 >
@@ -234,7 +236,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                     </span>
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-6 py-4 min-w-[300px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
                   onClick={() => handleSort('name')}
                 >
@@ -249,7 +251,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                     </span>
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
                   onClick={() => handleSort('leader')}
                 >
@@ -264,7 +266,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                     </span>
                   </div>
                 </th>
-                <th 
+                <th
                   className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
                   onClick={() => handleSort('department')}
                 >
@@ -282,7 +284,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                 <th className="px-6 py-4 whitespace-nowrap text-center text-slate-500">
                   <div className="flex items-center justify-center">Metrics</div>
                 </th>
-                <th 
+                <th
                   className="px-6 py-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
                   onClick={() => handleSort('progress')}
                 >
@@ -310,15 +312,15 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                 const taskCount = project.tasks?.length || 0;
 
                 return (
-                  <tr 
+                  <tr
                     key={project.id}
                     className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span 
+                      <span
                         className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm"
-                        style={{ 
-                          backgroundColor: status?.color || '#94a3b8', 
+                        style={{
+                          backgroundColor: status?.color || '#94a3b8',
                           color: '#ffffff'
                         }}
                       >
@@ -355,7 +357,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center justify-center gap-4">
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400" title="Tasks">
-                          <List size={14} className="text-indigo-400" /> 
+                          <List size={14} className="text-indigo-400" />
                           <span>{taskCount}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400" title="Milestones">
@@ -370,7 +372,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                           <span className="font-bold text-slate-700 dark:text-slate-200">{project.progress}%</span>
                         </div>
                         <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                          <div 
+                          <div
                             className="h-full rounded-full transition-all duration-700 ease-out"
                             style={{ width: `${project.progress || 0}%`, backgroundColor: status?.color || '#6366f1' }}
                           />
@@ -378,24 +380,33 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <button
-                        onClick={() => onEditProject(project)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all shadow-sm opacity-0 group-hover:opacity-100 focus:opacity-100"
-                        title="Edit Project"
-                      >
-                        <Edit3 size={16} />
-                      </button>
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => onUpdateProgress(project)}
+                          className="p-1.5 text-indigo-400 hover:text-indigo-600 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all shadow-sm"
+                          title="Update Progress"
+                        >
+                          <Presentation size={16} />
+                        </button>
+                        <button
+                          onClick={() => onEditProject(project)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all shadow-sm focus:opacity-100"
+                          title="Edit Project"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          
+
           {sortedProjects.length === 0 && (
             <div className="py-16 flex flex-col items-center justify-center text-center bg-transparent">
               <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-4">
-                 <Activity size={32} className="text-slate-300 dark:text-slate-600" />
+                <Activity size={32} className="text-slate-300 dark:text-slate-600" />
               </div>
               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Portfolio Empty</h3>
               <p className="text-[13px] font-medium text-slate-500 max-w-sm leading-relaxed mb-6">

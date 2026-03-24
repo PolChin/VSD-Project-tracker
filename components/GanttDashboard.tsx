@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Project, Task, MasterData, Milestone } from '../types';
+import { getWeekId, weekIdToDateRange, getNextWeekId } from '../utils/dateUtils';
 import {
   CalendarDays,
   LayoutGrid,
@@ -114,6 +115,45 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
   const years = Array.from({ length: rangeEndYear - rangeStartYear + 1 }, (_, i) => rangeStartYear + i);
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+  // Compute which Sun-Sat weeks belong to each (year, month) using majority-month rule
+  const weeksByYearMonth = useMemo(() => {
+    const map: Record<string, number[]> = {}; // key: "year-month" -> [weekNumbers]
+    // Iterate from rangeStart to rangeEnd week by week
+    let cursor = new Date(rangeStartYear, 0, 1);
+    // Go back to the Sunday on/before Jan 1
+    cursor.setDate(cursor.getDate() - cursor.getDay());
+    const rangeEnd = new Date(rangeEndYear, 11, 31);
+    while (cursor <= rangeEnd) {
+      const weekId = getWeekId(cursor);
+      const { start, end } = weekIdToDateRange(weekId);
+      // Majority month: which month has >= 4 days of this week?
+      let assignedYear: number;
+      let assignedMonth: number;
+      if (start.getMonth() === end.getMonth()) {
+        assignedYear = start.getFullYear();
+        assignedMonth = start.getMonth();
+      } else {
+        const daysInEndMonth = end.getDate();
+        if (daysInEndMonth >= 4) {
+          assignedYear = end.getFullYear();
+          assignedMonth = end.getMonth();
+        } else {
+          assignedYear = start.getFullYear();
+          assignedMonth = start.getMonth();
+        }
+      }
+      const [yearStr, weekStr] = weekId.split('-W');
+      const weekNum = parseInt(weekStr, 10);
+      const key = `${assignedYear}-${assignedMonth}`;
+      if (!map[key]) map[key] = [];
+      if (!map[key].includes(weekNum)) map[key].push(weekNum);
+      // Advance 7 days
+      cursor = new Date(start);
+      cursor.setDate(cursor.getDate() + 7);
+    }
+    return map;
+  }, [rangeStartYear, rangeEndYear]);
+
   const renderTimelineHeaderContent = () => {
     return (
       <div className="flex bg-white dark:bg-slate-900" style={{ height: `${HEADER_HEIGHT}px` }}>
@@ -135,16 +175,19 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                   {viewMode === 'month' && monthNames.map(m => (
                     <div key={m} className="flex-1 text-[12px] text-center text-slate-600 dark:text-slate-400 font-bold border-r border-slate-100 dark:border-slate-800 last:border-0">{m}</div>
                   ))}
-                  {viewMode === 'week' && monthNames.map((m) => (
-                    <div key={m} className="flex-grow border-r border-slate-100 dark:border-slate-800 last:border-0 h-full flex flex-col justify-center">
-                      <div className="text-[11px] text-center text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter leading-none">{m}</div>
-                      <div className="flex justify-around mt-0.5">
-                        {[1, 2, 3, 4].map(w => (
-                          <div key={w} className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">W{w}</div>
-                        ))}
+                  {viewMode === 'week' && monthNames.map((m, mIdx) => {
+                    const weeksInMonth = weeksByYearMonth[`${year}-${mIdx}`] || [1, 2, 3, 4];
+                    return (
+                      <div key={m} className="flex-grow border-r border-slate-100 dark:border-slate-800 last:border-0 h-full flex flex-col justify-center">
+                        <div className="text-[11px] text-center text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter leading-none">{m}</div>
+                        <div className="flex justify-around mt-0.5">
+                          {weeksInMonth.map(w => (
+                            <div key={w} className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">W{w}</div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { db, collection, doc, writeBatch, query, orderBy, limit, getDocs } from '../firebase';
 import { Project, MasterData, Task, Milestone } from '../types';
 import { Plus, Trash2, Save, Activity, FileText, Calendar, Flag, AlertCircle, CheckCircle2, ShieldCheck, X } from 'lucide-react';
@@ -28,8 +28,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       description: String(t.description || ''),
       startDate: String(t.startDate || ''),
       endDate: String(t.endDate || ''),
-      progress: Number(t.progress || 0),
-      weight: Number(t.weight || 0)
+      progress: Number(t.progress || 0)
     }));
   };
 
@@ -56,20 +55,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
   });
 
   const isEditMode = !!initialProject;
-  const totalWeight = formData.tasks.reduce((sum, task) => sum + (task.weight || 0), 0);
 
-  useEffect(() => {
-    if (formData.tasks.length > 0) {
-      const calculatedProgress = formData.tasks.reduce((acc, task) => {
-        const weightFactor = totalWeight > 0 ? (task.weight || 0) / totalWeight : 1 / formData.tasks.length;
-        return acc + (task.progress * weightFactor);
-      }, 0);
-      
-      setFormData(prev => ({ ...prev, progress: Math.round(calculatedProgress) }));
-    } else {
-      setFormData(prev => ({ ...prev, progress: 0 }));
-    }
-  }, [formData.tasks, totalWeight]);
 
   const handleAddTask = () => {
     const newTask: Task = {
@@ -78,8 +64,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       description: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      progress: 0,
-      weight: 0
+      progress: 0
     };
     setFormData(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }));
     if (errors.tasks) setErrors(prev => { const n = {...prev}; delete n.tasks; return n; });
@@ -159,12 +144,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
     
     if (!validate()) return;
     
-    if (formData.tasks.length > 0 && totalWeight !== 100 && totalWeight !== 0) {
-      if (!confirm(`Total weight is ${totalWeight}%. Weights should ideally total 100%. Proceed?`)) {
-        return;
-      }
-    }
-
     setLoading(true);
     try {
       let projectRef;
@@ -322,11 +301,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
                 <label className="block text-[10px] font-black uppercase text-indigo-900/50 dark:text-indigo-400/50 tracking-widest">MASTER PROGRESS</label>
                 <span className="text-4xl font-black text-indigo-700 dark:text-indigo-400 leading-none">{formData.progress}%</span>
               </div>
-              <div className="w-full h-4 bg-white/60 dark:bg-slate-900/60 rounded-full overflow-hidden p-0.5 shadow-inner relative z-10">
-                <div 
-                  className="h-full bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-700"
-                  style={{ width: `${formData.progress}%` }}
+              <div className="mt-2 relative z-10">
+                <input
+                  type="range"
+                  min="0" max="100"
+                  value={formData.progress}
+                  onChange={e => setFormData({ ...formData, progress: parseInt(e.target.value) })}
+                  className="w-full accent-indigo-600 cursor-pointer"
                 />
+                <div className="flex justify-between text-[8px] font-bold text-slate-400 mt-1">
+                  <span>0%</span><span>50%</span><span>100%</span>
+                </div>
               </div>
             </div>
           </div>
@@ -472,15 +457,6 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
                                 className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-indigo-600 dark:accent-indigo-500" 
                               />
                           </div>
-                        </div>
-                        <div className="w-16">
-                          <label className="block text-[8px] font-black uppercase text-slate-400 dark:text-slate-500 mb-1 text-center">WEIGHT</label>
-                          <input 
-                            type="number" 
-                            value={task.weight} 
-                            onChange={e => updateTask(task.id, 'weight', parseInt(e.target.value) || 0)} 
-                            className="w-full text-[11px] font-black text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-400 focus:ring-1 focus:ring-indigo-500/30" 
-                          />
                         </div>
                         <button type="button" onClick={() => handleRemoveTask(task.id)} className="text-slate-300 dark:text-slate-600 hover:text-rose-500 p-2 transition-colors"><Trash2 size={16} /></button>
                     </div>

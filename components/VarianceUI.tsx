@@ -410,20 +410,20 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
   };
 
   return (
-    <div className="w-full flex flex-col gap-6">
-      
+    <div className="w-full h-full flex flex-col gap-6 overflow-hidden">
+
       {/* Header Container */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl flex flex-col xl:flex-row justify-between items-center gap-4 shadow-sm border border-slate-200 dark:border-slate-800">
         <div className="flex items-center gap-3 w-full xl:w-auto">
           <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex-shrink-0">
-             <History size={24} className="text-indigo-600 dark:text-indigo-400" />
+            <History size={24} className="text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Variance Analysis</h2>
             <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">Historical Delta Logging</p>
           </div>
         </div>
-        
+
         <div className="w-full xl:w-96 flex items-center bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 relative">
           <Search size={16} className="text-slate-400 absolute left-3" />
           <select
@@ -443,8 +443,8 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Decoding Snapshot Matrix...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch w-full max-w-full lg:h-[600px] mb-8">
-          <div className="lg:col-span-7 flex flex-col h-full min-h-[600px]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch w-full max-w-full flex-grow overflow-hidden mb-4">
+          <div className="lg:col-span-7 flex flex-col h-full min-h-0">
             {history.length > 0 ? (
               <ProgressionChart history={history} />
             ) : (
@@ -457,8 +457,8 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
             )}
           </div>
 
-          <div className="lg:col-span-5 flex flex-col h-full min-h-[600px] overflow-hidden">
-            <div className="bg-white/80 dark:bg-slate-900/60 glass rounded-[2.5rem] border border-white dark:border-slate-800 shadow-xl flex flex-col h-[600px] overflow-hidden">
+          <div className="lg:col-span-5 flex flex-col h-full min-h-0 overflow-hidden">
+            <div className="bg-white/80 dark:bg-slate-900/60 glass rounded-[2.5rem] border border-white dark:border-slate-800 shadow-xl flex flex-col h-full overflow-hidden">
               <div className="p-8 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-inherit z-10">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400">

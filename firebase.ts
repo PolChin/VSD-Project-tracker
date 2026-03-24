@@ -13,7 +13,9 @@ import {
   serverTimestamp,
   getDocs,
   where,
-  limit
+  limit,
+  setDoc,
+  updateDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -40,5 +42,7 @@ export {
   serverTimestamp,
   getDocs,
   where,
-  limit
+  limit,
+  setDoc,
+  updateDoc
 };

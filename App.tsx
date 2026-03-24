@@ -12,8 +12,10 @@ import LoadingScreen from './components/LoadingScreen';
 import GanttDashboard from './components/GanttDashboard';
 import ProjectList from './components/ProjectList';
 import ProjectForm from './components/ProjectForm';
+import ProgressUpdateModal from './components/ProgressUpdateModal';
 import VarianceUI from './components/VarianceUI';
 import LeaderAnalytics from './components/LeaderAnalytics';
+import WeeklyVisualboard from './components/WeeklyVisualboard';
 import { 
   LayoutDashboard, 
   Layers, 
@@ -23,15 +25,17 @@ import {
   Users, 
   Plus,
   Box,
-  Fingerprint
+  Fingerprint,
+  Presentation
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'portfolio' | 'variance' | 'leaders'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'weekly' | 'portfolio' | 'variance' | 'leaders'>('timeline');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [progressUpdateProject, setProgressUpdateProject] = useState<{project: Project, weekId?: string} | null>(null);
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('theme') === 'dark' ||
       (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -84,8 +88,7 @@ const App: React.FC = () => {
             description: String(t.description || ''),
             startDate: String(t.startDate),
             endDate: String(t.endDate),
-            progress: Number(t.progress || 0),
-            weight: Number(t.weight || 0)
+            progress: Number(t.progress || 0)
           })) as Task[],
           milestones: (data.milestones || []).map((m: any) => ({
             id: String(m.id),
@@ -147,7 +150,7 @@ const App: React.FC = () => {
   const isModalOpen = showAddModal || editingProject !== null;
 
   return (
-    <div className="h-screen flex flex-col overflow-y-scroll overflow-x-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 transition-colors duration-300">
+    <div className="h-screen flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 transition-colors duration-300">
       
       {/* Top Navigation Bar */}
       <nav className="flex-shrink-0 sticky top-0 z-50 w-full bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
@@ -173,6 +176,7 @@ const App: React.FC = () => {
             <div className="hidden md:flex items-center space-x-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl">
               {[
                 { id: 'timeline', icon: LayoutDashboard, label: 'Timeline' },
+                { id: 'weekly', icon: Presentation, label: 'Weekly Board' },
                 { id: 'portfolio', icon: Layers, label: 'Portfolio' },
                 { id: 'variance', icon: Activity, label: 'Variance' },
                 { id: 'leaders', icon: Users, label: 'Leaders' }
@@ -218,14 +222,22 @@ const App: React.FC = () => {
       </nav>
 
       {/* Main Content Area */}
-      <main className="flex-grow w-full px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-500 ease-out">
+      <main className="flex-grow w-full px-4 sm:px-6 lg:px-8 py-6 h-0 flex flex-col animate-in fade-in duration-500 ease-out overflow-hidden">
         {activeTab === 'timeline' && <GanttDashboard projects={projects} masterData={masterData} />}
+        {activeTab === 'weekly' && (
+          <WeeklyVisualboard 
+            projects={projects} 
+            masterData={masterData} 
+            onUpdateProgress={(project, weekId) => setProgressUpdateProject({ project, weekId })}
+          />
+        )}
         {activeTab === 'portfolio' && (
           <ProjectList
             projects={projects}
             masterData={masterData}
             onAddNew={() => setShowAddModal(true)}
             onEditProject={handleEditProject}
+            onUpdateProgress={(project) => setProgressUpdateProject({ project })}
           />
         )}
         {activeTab === 'variance' && <VarianceUI projects={projects} />}
@@ -233,6 +245,14 @@ const App: React.FC = () => {
       </main>
 
       {/* Modals */}
+      {progressUpdateProject && (
+        <ProgressUpdateModal
+          project={progressUpdateProject.project}
+          initialWeekId={progressUpdateProject.weekId}
+          masterData={masterData}
+          onClose={() => setProgressUpdateProject(null)}
+        />
+      )}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <div

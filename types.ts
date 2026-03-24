@@ -6,7 +6,6 @@ export interface Task {
   startDate: string; // YYYY-MM-DD
   endDate: string;   // YYYY-MM-DD
   progress: number;
-  weight: number;    // % weight of the task within the project
 }
 
 export interface Milestone {
@@ -39,6 +38,18 @@ export interface StatusMaster {
   id: string;
   name: string;
   color: string;
+}
+
+export interface WeeklyUpdate {
+  id: string;
+  projectId: string;
+  weekId: string; // e.g., "2026-W11"
+  progress: number;
+  status: string;
+  summary: string;
+  issues: string;
+  nextSteps: string;
+  updatedAt: string;
 }
 
 export interface MasterData {

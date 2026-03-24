@@ -121,31 +121,34 @@ const LeaderAnalytics: React.FC<LeaderAnalyticsProps> = ({ projects, masterData 
   );
 
   return (
-    <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-8 h-[750px] mb-12">
+    <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-8 flex-grow overflow-hidden mb-4 min-h-0">
       {/* Sidebar: Leaderboard */}
       <div className="xl:col-span-4 h-full overflow-hidden">
         {renderLeaderboard()}
       </div>
 
       {/* Main Analysis Area content */}
-      <div className="xl:col-span-8 h-full bg-slate-50/50 dark:bg-slate-900/30 rounded-[2.5rem] border border-slate-200/60 dark:border-slate-800 flex flex-col overflow-hidden">
-        <div className="flex-grow overflow-y-auto p-8 space-y-10 custom-scrollbar">
-          {!selectedLeader ? (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-40 py-20">
-              <Users size={64} className="mb-6 text-slate-300" />
-              <h3 className="text-xl font-black uppercase tracking-widest text-slate-400">Select a Leader</h3>
-              <p className="text-sm font-bold text-slate-400 mt-2">Choose from the ranking list to view deep-dive intelligence.</p>
+      <div className="xl:col-span-8 h-full bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden min-h-0">
+        {!selectedLeader ? (
+          <div className="flex-grow flex flex-col items-center justify-center text-center opacity-40 p-8">
+            <Users size={64} className="mb-6 text-slate-300" />
+            <h3 className="text-xl font-black uppercase tracking-widest text-slate-400">Select a Leader</h3>
+            <p className="text-sm font-bold text-slate-400 mt-2">Choose from the ranking list to view deep-dive intelligence.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col h-full overflow-hidden">
+            {/* Leader Header - FIXED (Outside Scroll Area) */}
+            <div className="flex-shrink-0 z-20 bg-white dark:bg-slate-900 px-8 pt-8 pb-6 border-b border-slate-200 dark:border-slate-800">
+               <div className="flex items-center justify-between">
+                  <div>
+                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase leading-tight">{selectedLeader}</h2>
+                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Leadership Portfolio Analytics</p>
+                  </div>
+               </div>
             </div>
-          ) : (
-            <>
-              {/* Leader Header */}
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-6">
-                 <div>
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase leading-tight">{selectedLeader}</h2>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Leadership Portfolio Analytics</p>
-                 </div>
-              </div>
 
+            {/* Scrollable Details Area */}
+            <div className="flex-grow overflow-y-auto custom-scrollbar px-8 py-8 space-y-10">
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-shrink-0">
                 <div className="bg-indigo-600 dark:bg-indigo-500 rounded-3xl p-6 text-white shadow-xl flex flex-col justify-between h-40 transform transition-all hover:-translate-y-1">
@@ -253,9 +256,9 @@ const LeaderAnalytics: React.FC<LeaderAnalyticsProps> = ({ projects, masterData 
                     ))}
                  </div>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`
