@@ -251,6 +251,10 @@ const App: React.FC = () => {
           initialWeekId={progressUpdateProject.weekId}
           masterData={masterData}
           onClose={() => setProgressUpdateProject(null)}
+          onSuccess={() => {
+            setProgressUpdateProject(null);
+            setActiveTab('weekly');
+          }}
         />
       )}
       {isModalOpen && (

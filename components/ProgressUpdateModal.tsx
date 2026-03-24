@@ -9,9 +9,10 @@ interface ProgressUpdateModalProps {
   initialWeekId?: string;
   masterData: MasterData;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, initialWeekId, masterData, onClose }) => {
+const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, initialWeekId, masterData, onClose, onSuccess }) => {
   const [history, setHistory] = useState<WeeklyUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -122,7 +123,11 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
         updatedAt: now
       });
 
-      onClose();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        onClose();
+      }
     } catch (err) {
       console.error("Failed to save progress:", err);
     } finally {

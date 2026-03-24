@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { db, collection, query, where, getDocs } from '../firebase';
+import { db, collection, query, where, getDocs, onSnapshot } from '../firebase';
 import { Project, WeeklyUpdate, MasterData } from '../types';
 import { getCurrentWeekId, getPreviousWeekId, getNextWeekId, weekIdToDateRange } from '../utils/dateUtils';
 import MultiSelectFilter from './MultiSelectFilter';
@@ -16,7 +16,8 @@ import {
   Building2,
   User,
   Tag,
-  RotateCcw
+  RotateCcw,
+  Filter
 } from 'lucide-react';
 
 interface WeeklyVisualboardProps {
@@ -71,26 +72,22 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
   }, [masterData.statuses]);
 
   useEffect(() => {
-    const fetchUpdates = async () => {
-      setIsLoading(true);
-      try {
-        const q = query(collection(db, 'weekly_updates'), where('weekId', 'in', displayWeeks));
-        const snap = await getDocs(q);
-
-        const updatesMap: Record<string, Record<string, WeeklyUpdate>> = {};
-        snap.docs.forEach(doc => {
-          const data = doc.data() as WeeklyUpdate;
-          if (!updatesMap[data.projectId]) updatesMap[data.projectId] = {};
-          updatesMap[data.projectId][data.weekId] = { ...data, id: doc.id };
-        });
-        setUpdates(updatesMap);
-      } catch (err) {
-        console.error("Failed to fetch weekly updates:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchUpdates();
+    setIsLoading(true);
+    const q = query(collection(db, 'weekly_updates'), where('weekId', 'in', displayWeeks));
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const updatesMap: Record<string, Record<string, WeeklyUpdate>> = {};
+      snap.docs.forEach(doc => {
+        const data = doc.data() as WeeklyUpdate;
+        if (!updatesMap[data.projectId]) updatesMap[data.projectId] = {};
+        updatesMap[data.projectId][data.weekId] = { ...data, id: doc.id };
+      });
+      setUpdates(updatesMap);
+      setIsLoading(false);
+    }, (err) => {
+      console.error("Failed to fetch weekly updates:", err);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
   }, [displayWeeks]);
 
   const filteredProjects = useMemo(() => {

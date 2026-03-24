@@ -63,7 +63,7 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
                     </span>
                     <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">
                         {selectedValues.length === 0
-                            ? "ALL"
+                            ? "NONE"
                             : selectedValues.length === options.length
                                 ? "ALL SELECTED"
                                 : `${selectedValues.length} SELECTED`}
