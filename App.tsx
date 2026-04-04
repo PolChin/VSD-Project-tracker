@@ -16,6 +16,7 @@ import ProgressUpdateModal from './components/ProgressUpdateModal';
 import VarianceUI from './components/VarianceUI';
 import LeaderAnalytics from './components/LeaderAnalytics';
 import WeeklyVisualboard from './components/WeeklyVisualboard';
+import DashboardReport from './components/DashboardReport';
 import { 
   LayoutDashboard, 
   Layers, 
@@ -26,11 +27,12 @@ import {
   Plus,
   Box,
   Fingerprint,
-  Presentation
+  Presentation,
+  BarChart2
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'weekly' | 'portfolio' | 'variance' | 'leaders'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'weekly' | 'portfolio' | 'variance' | 'leaders' | 'dashboard'>('timeline');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -179,7 +181,8 @@ const App: React.FC = () => {
                 { id: 'weekly', icon: Presentation, label: 'Weekly Board' },
                 { id: 'portfolio', icon: Layers, label: 'Portfolio' },
                 { id: 'variance', icon: Activity, label: 'Variance' },
-                { id: 'leaders', icon: Users, label: 'Leaders' }
+                { id: 'leaders', icon: Users, label: 'Leaders' },
+                { id: 'dashboard', icon: BarChart2, label: 'Dashboard' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -223,6 +226,7 @@ const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-grow w-full px-4 sm:px-6 lg:px-8 py-6 h-0 flex flex-col animate-in fade-in duration-500 ease-out overflow-hidden">
+        {activeTab === 'dashboard' && <DashboardReport projects={projects} masterData={masterData} />}
         {activeTab === 'timeline' && <GanttDashboard projects={projects} masterData={masterData} />}
         {activeTab === 'weekly' && (
           <WeeklyVisualboard 

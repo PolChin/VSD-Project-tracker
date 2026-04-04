@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Improvement Department — Interactive Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #06090f;
+  --bg2: #0b1120;
+  --surface: #111a2e;
+  --surface-hi: #162038;
+  --surface-hover: #1a2644;
+  --border: #1e2d4a;
+  --border-hi: #2a3d5e;
+  --text: #e8edf5;
+  --text2: #a0b0c8;
+  --text3: #5e7290;
+  --text4: #3d5070;
+  --accent: #7c6aef;
+  --accent2: #a08efc;
+  --accent-glow: rgba(124,106,239,0.12);
+  --green: #22c988;
+  --green-bg: rgba(34,201,136,0.1);
+  --green-border: rgba(34,201,136,0.25);
+  --blue: #4d8af0;
+  --blue-bg: rgba(77,138,240,0.1);
+  --blue-border: rgba(77,138,240,0.25);
+  --amber: #f0a030;
+  --amber-bg: rgba(240,160,48,0.1);
+  --amber-border: rgba(240,160,48,0.25);
+  --red: #f05050;
+  --red-bg: rgba(240,80,80,0.1);
+  --red-border: rgba(240,80,80,0.25);
+  --purple: #b08df8;
+  --purple-bg: rgba(176,141,248,0.1);
+  --cyan: #28d4e4;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --transition: 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Outfit',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+/* Noise overlay */
+body::before{
+  content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity:0.4;
+}
+
+.app{max-width:1480px;margin:0 auto;padding:28px 24px;}
+
+/* ─── HEADER ─── */
+.header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--border);
+}
+.header-left h1{
+  font-size:26px;font-weight:800;letter-spacing:-0.6px;
+  background:linear-gradient(135deg,#e8edf5 30%,#a08efc);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.header-left .sub{font-size:13px;color:var(--text3);font-weight:400;margin-top:2px;}
+.header-right{display:flex;align-items:center;gap:16px;}
+.date-badge{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  padding:6px 14px;border-radius:20px;
+  background:var(--accent-glow);border:1px solid rgba(124,106,239,0.2);
+  color:var(--accent2);font-weight:500;
+}
+.fullscreen-btn{
+  width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text3);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:var(--transition);font-size:16px;
+}
+.fullscreen-btn:hover{border-color:var(--border-hi);color:var(--text);}
+
+/* ─── TABS ─── */
+.tabs{
+  display:flex;gap:4px;margin-bottom:28px;
+  background:var(--surface);border-radius:12px;padding:4px;
+  border:1px solid var(--border);width:fit-content;
+}
+.tab{
+  padding:10px 22px;border-radius:9px;border:none;
+  background:transparent;color:var(--text3);
+  font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;transition:var(--transition);
+  position:relative;
+}
+.tab:hover{color:var(--text2);}
+.tab.active{
+  background:var(--accent);color:#fff;
+  box-shadow:0 2px 12px rgba(124,106,239,0.3);
+}
+
+/* ─── TAB PANELS ─── */
+.panel{display:none;animation:panelIn 0.35s ease;}
+.panel.active{display:block;}
+@keyframes panelIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* ─── KPI ROW ─── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;}
+.kpi{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;position:relative;overflow:hidden;
+  cursor:pointer;transition:var(--transition);
+}
+.kpi:hover{border-color:var(--border-hi);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2);}
+.kpi.selected{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),0 8px 24px rgba(124,106,239,0.15);}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2.5px;}
+.kpi[data-status="all"]::before{background:var(--accent);}
+.kpi[data-status="In Progress"]::before{background:var(--blue);}
+.kpi[data-status="Completed"]::before{background:var(--green);}
+.kpi[data-status="Delay"]::before{background:var(--red);}
+.kpi[data-status="pipeline"]::before{background:var(--amber);}
+.kpi .kpi-icon{
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;margin-bottom:10px;
+}
+.kpi .kpi-val{
+  font-size:32px;font-weight:800;letter-spacing:-1px;
+  font-family:'JetBrains Mono',monospace;line-height:1;
+}
+.kpi .kpi-label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);font-weight:600;margin-top:6px;}
+.kpi .kpi-sub{font-size:11px;color:var(--text4);margin-top:3px;}
+
+/* ─── GRID LAYOUTS ─── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:22px;}
+.grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:22px;}
+
+/* ─── CARDS ─── */
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:22px;transition:var(--transition);
+}
+.card:hover{border-color:var(--border-hi);}
+.card-head{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:18px;
+}
+.card-title{
+  font-size:12px;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--text3);font-weight:700;display:flex;align-items:center;gap:8px;
+}
+.card-title .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+.card-badge{
+  font-size:10px;padding:3px 10px;border-radius:12px;
+  background:var(--accent-glow);color:var(--accent2);font-weight:600;
+}
+
+/* ─── LEADER BARS ─── */
+.leader-list{display:grid;gap:8px;}
+.leader-item{
+  display:grid;grid-template-columns:130px 1fr 44px;align-items:center;gap:12px;
+  padding:10px 14px;border-radius:var(--radius-sm);
+  cursor:pointer;transition:var(--transition);
+  border:1px solid transparent;
+}
+.leader-item:hover,.leader-item.selected{
+  background:var(--surface-hover);border-color:var(--border);
+}
+.leader-item.selected{border-color:var(--accent);background:rgba(124,106,239,0.06);}
+.leader-name{font-size:13px;font-weight:600;white-space:nowrap;}
+.leader-name span{display:block;font-size:10px;font-weight:400;color:var(--text4);margin-top:1px;}
+.leader-bar-bg{height:18px;background:var(--bg2);border-radius:4px;overflow:hidden;display:flex;}
+.leader-seg{height:100%;transition:width 0.5s ease;}
+.leader-count{
+  font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;
+  text-align:right;color:var(--text2);
+}
+
+/* ─── DEPARTMENT PILLS ─── */
+.dept-list{display:flex;flex-direction:column;gap:6px;}
+.dept-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;border-radius:var(--radius-sm);
+  cursor:pointer;transition:var(--transition);
+  border:1px solid transparent;
+}
+.dept-item:hover,.dept-item.selected{background:var(--surface-hover);border-color:var(--border);}
+.dept-item.selected{border-color:var(--accent);background:rgba(124,106,239,0.06);}
+.dept-color{width:4px;height:28px;border-radius:2px;}
+.dept-count{
+  font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;
+  min-width:28px;
+}
+.dept-info .dept-name{font-size:13px;font-weight:600;}
+.dept-info .dept-full{font-size:10px;color:var(--text4);}
+
+/* ─── FILTER BAR ─── */
+.filter-bar{
+  display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;
+}
+.filter-bar .label{font-size:11px;color:var(--text4);font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+.active-filters{display:flex;gap:6px;flex-wrap:wrap;}
+.filter-chip{
+  display:flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:16px;font-size:11px;font-weight:600;
+  background:var(--accent-glow);border:1px solid rgba(124,106,239,0.25);color:var(--accent2);
+}
+.filter-chip .x{
+  cursor:pointer;opacity:0.6;transition:var(--transition);font-size:14px;line-height:1;
+}
+.filter-chip .x:hover{opacity:1;}
+.clear-all{
+  font-size:11px;color:var(--text4);cursor:pointer;padding:5px 10px;
+  border:none;background:none;font-family:'Outfit',sans-serif;font-weight:500;
+  transition:var(--transition);
+}
+.clear-all:hover{color:var(--red);}
+
+/* ─── PROJECT TABLE ─── */
+.table-wrap{
+  max-height:520px;overflow-y:auto;border-radius:var(--radius);
+  border:1px solid var(--border);
+}
+.table-wrap::-webkit-scrollbar{width:5px;}
+.table-wrap::-webkit-scrollbar-track{background:var(--surface);}
+.table-wrap::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:3px;}
+table{width:100%;border-collapse:collapse;}
+thead th{
+  font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--text4);
+  font-weight:700;text-align:left;padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:var(--surface);z-index:2;
+}
+thead th.sortable{cursor:pointer;user-select:none;}
+thead th.sortable:hover{color:var(--text2);}
+thead th .sort-icon{margin-left:4px;font-size:9px;opacity:0.5;}
+thead th.sort-active .sort-icon{opacity:1;color:var(--accent2);}
+tbody tr{transition:background var(--transition);cursor:pointer;}
+tbody tr:hover{background:var(--surface-hover);}
+tbody tr.expanded-row{background:var(--surface-hover);}
+td{padding:11px 16px;font-size:13px;border-bottom:1px solid rgba(30,45,74,0.4);vertical-align:middle;}
+td:first-child{font-weight:500;max-width:350px;}
+
+.progress-cell{display:flex;align-items:center;gap:10px;min-width:130px;}
+.progress-track{flex:1;height:5px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:3px;transition:width 0.4s ease;}
+.progress-pct{
+  font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;
+  min-width:34px;text-align:right;
+}
+
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:5px;font-size:10px;font-weight:700;
+  letter-spacing:0.3px;white-space:nowrap;
+}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;}
+.badge-completed{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);}
+.badge-completed::before{background:var(--green);}
+.badge-inprogress{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);}
+.badge-inprogress::before{background:var(--blue);}
+.badge-planning{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(176,141,248,0.25);}
+.badge-planning::before{background:var(--purple);}
+.badge-pending{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border);}
+.badge-pending::before{background:var(--amber);}
+.badge-delay{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);}
+.badge-delay::before{background:var(--red);}
+
+.leader-tag{font-size:12px;color:var(--text2);}
+.dept-tag{
+  font-size:10px;padding:3px 8px;border-radius:4px;
+  background:rgba(255,255,255,0.04);color:var(--text3);
+  font-family:'JetBrains Mono',monospace;font-weight:500;
+}
+
+/* ─── DRILL-DOWN PANEL ─── */
+.drill-panel{
+  display:none;animation:drillIn 0.3s ease;
+  background:var(--bg2);border:1px solid var(--border);border-top:none;
+  padding:16px 20px;
+}
+.drill-panel.open{display:block;}
+@keyframes drillIn{from{opacity:0;max-height:0;}to{opacity:1;max-height:300px;}}
+.drill-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.drill-item{
+  padding:12px;background:var(--surface);border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+}
+.drill-item .dl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text4);font-weight:600;margin-bottom:4px;}
+.drill-item .dv{font-size:14px;font-weight:600;color:var(--text);}
+
+/* ─── STATUS BAR (overview) ─── */
+.status-bar-wrap{margin-top:6px;}
+.status-bar{display:flex;height:28px;border-radius:6px;overflow:hidden;gap:2px;}
+.status-bar div{
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#fff;
+  font-family:'JetBrains Mono',monospace;
+  transition:flex 0.5s ease;cursor:pointer;
+  border-radius:4px;
+}
+.status-bar div:hover{filter:brightness(1.2);}
+.status-legend{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);}
+.legend-dot{width:8px;height:8px;border-radius:2px;}
+
+/* ─── ATTENTION CARD ─── */
+.attention-card{
+  border-color:rgba(240,80,80,0.2);
+  background:linear-gradient(135deg,var(--surface) 0%,rgba(240,80,80,0.03) 100%);
+}
+.attention-header{
+  display:flex;align-items:center;gap:8px;margin-bottom:16px;
+}
+.attention-header .icon{font-size:18px;}
+.attention-header .title{font-size:14px;font-weight:700;color:var(--red);}
+.attention-list{display:grid;gap:6px;}
+.attention-item{
+  display:grid;grid-template-columns:1fr 120px 80px 140px;align-items:center;
+  padding:10px 14px;background:rgba(0,0,0,0.15);border-radius:var(--radius-sm);
+  border-left:3px solid var(--red);gap:8px;
+}
+.attention-item.warning{border-left-color:var(--amber);}
+.attention-item .name{font-size:12px;font-weight:600;}
+.attention-item .meta{font-size:11px;color:var(--text3);}
+
+/* ─── INSIGHTS PANEL ─── */
+.insight-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.insight{
+  padding:16px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:var(--surface);
+}
+.insight .insight-icon{font-size:20px;margin-bottom:8px;}
+.insight .insight-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.insight .insight-desc{font-size:11px;color:var(--text3);line-height:1.5;}
+.insight-highlight{
+  font-family:'JetBrains Mono',monospace;font-weight:700;
+  font-size:22px;color:var(--accent2);margin-bottom:4px;
+}
+
+/* ─── SEARCH ─── */
+.search-box{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 14px;border-radius:10px;
+  background:var(--bg2);border:1px solid var(--border);
+  transition:var(--transition);min-width:220px;
+}
+.search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow);}
+.search-box input{
+  border:none;background:none;outline:none;
+  color:var(--text);font-family:'Outfit',sans-serif;font-size:13px;
+  width:100%;
+}
+.search-box input::placeholder{color:var(--text4);}
+.search-icon{color:var(--text4);font-size:14px;}
+
+/* ─── COUNTER ANIM ─── */
+.counter{transition:var(--transition);}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:1100px){
+  .kpi-row{grid-template-columns:repeat(3,1fr);}
+  .grid-2,.grid-3,.grid-2-1{grid-template-columns:1fr;}
+  .drill-grid{grid-template-columns:1fr 1fr;}
+}
+@media(max-width:700px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);}
+  .header{flex-direction:column;gap:12px;align-items:flex-start;}
+  .tabs{width:100%;overflow-x:auto;}
+  .attention-item{grid-template-columns:1fr;gap:4px;}
+  .insight-cards{grid-template-columns:1fr;}
+}
+
+/* ─── EMPTY STATE ─── */
+.empty-state{
+  text-align:center;padding:48px 20px;color:var(--text4);
+}
+.empty-state .icon{font-size:36px;margin-bottom:12px;opacity:0.4;}
+.empty-state .msg{font-size:14px;}
+
+/* ─── FOOTER ─── */
+.footer{
+  margin-top:28px;padding-top:18px;border-top:1px solid var(--border);
+  font-size:11px;color:var(--text4);display:flex;justify-content:space-between;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>Improvement Department</h1>
+    <div class="sub">Interactive Progress Dashboard — Click any element to filter</div>
+  </div>
+  <div class="header-right">
+    <div class="search-box">
+      <span class="search-icon">&#128269;</span>
+      <input type="text" id="searchInput" placeholder="Search projects..." oninput="onSearch()">
+    </div>
+    <span class="date-badge">APR 2026</span>
+    <button class="fullscreen-btn" onclick="toggleFS()" title="Fullscreen">&#9974;</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" data-tab="overview">Overview</button>
+  <button class="tab" data-tab="projects">All Projects</button>
+  <button class="tab" data-tab="attention">Attention</button>
+  <button class="tab" data-tab="insights">Insights</button>
+</div>
+
+<!-- ═══════ OVERVIEW TAB ═══════ -->
+<div class="panel active" id="panel-overview">
+  <!-- KPIs -->
+  <div class="kpi-row" id="kpiRow"></div>
+  
+  <!-- Charts -->
+  <div class="grid-3">
+    <!-- Status -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="dot"></span>Status Distribution</div>
+      </div>
+      <div class="status-bar-wrap">
+        <div class="status-bar" id="statusBar"></div>
+        <div class="status-legend" id="statusLegend"></div>
+      </div>
+    </div>
+    <!-- Leaders -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="dot"></span>Workload by Leader</div>
+        <span class="card-badge">Click to filter</span>
+      </div>
+      <div class="leader-list" id="leaderList"></div>
+    </div>
+    <!-- Departments -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title"><span class="dot"></span>Department Coverage</div>
+        <span class="card-badge">Click to filter</span>
+      </div>
+      <div class="dept-list" id="deptList"></div>
+    </div>
+  </div>
+
+  <!-- Filtered Table -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="dot"></span>Projects <span id="tableCount" style="color:var(--accent2);font-family:'JetBrains Mono',monospace;"></span></div>
+    </div>
+    <div class="filter-bar" id="filterBar" style="display:none;">
+      <span class="label">Active Filters:</span>
+      <div class="active-filters" id="activeFilters"></div>
+      <button class="clear-all" onclick="clearFilters()">Clear all</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" onclick="sortTable('name')">Project Name <span class="sort-icon">&#9650;&#9660;</span></th>
+            <th class="sortable" onclick="sortTable('progress')">Progress <span class="sort-icon">&#9650;&#9660;</span></th>
+            <th class="sortable" onclick="sortTable('leader')">Leader <span class="sort-icon">&#9650;&#9660;</span></th>
+            <th>Dept</th>
+            <th class="sortable" onclick="sortTable('status')">Status <span class="sort-icon">&#9650;&#9660;</span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ ALL PROJECTS TAB ═══════ -->
+<div class="panel" id="panel-projects">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="dot"></span>Complete Project Registry</div>
+      <span class="card-badge" id="projCount2"></span>
+    </div>
+    <div class="filter-bar" id="filterBar2" style="display:none;">
+      <span class="label">Active Filters:</span>
+      <div class="active-filters" id="activeFilters2"></div>
+      <button class="clear-all" onclick="clearFilters()">Clear all</button>
+    </div>
+    <div class="table-wrap" style="max-height:650px;">
+      <table>
+        <thead>
+          <tr>
+            <th class="sortable" onclick="sortTable('name')">Project Name <span class="sort-icon">&#9650;&#9660;</span></th>
+            <th class="sortable" onclick="sortTable('progress')">Progress <span class="sort-icon">&#9650;&#9660;</span></th>
+            <th class="sortable" onclick="sortTable('leader')">Leader <span class="sort-icon">&#9650;&#9660;</span></th>
+            <th>Dept</th>
+            <th class="sortable" onclick="sortTable('status')">Status <span class="sort-icon">&#9650;&#9660;</span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody2"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ ATTENTION TAB ═══════ -->
+<div class="panel" id="panel-attention">
+  <div class="grid-2">
+    <div class="card attention-card">
+      <div class="attention-header">
+        <span class="icon">&#9888;</span>
+        <span class="title">Delayed Projects</span>
+      </div>
+      <div class="attention-list" id="delayedList"></div>
+    </div>
+    <div class="card" style="border-color:rgba(240,160,48,0.2);background:linear-gradient(135deg,var(--surface) 0%,rgba(240,160,48,0.03) 100%);">
+      <div class="attention-header">
+        <span class="icon">&#9200;</span>
+        <span class="title" style="color:var(--amber);">In Progress — 0% Completion</span>
+      </div>
+      <div class="attention-list" id="zeroList"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="dot" style="background:var(--amber);"></span>Pipeline — Planning & Pending</div>
+    </div>
+    <div class="attention-list" id="pipelineList"></div>
+  </div>
+</div>
+
+<!-- ═══════ INSIGHTS TAB ═══════ -->
+<div class="panel" id="panel-insights">
+  <div class="insight-cards" id="insightCards"></div>
+</div>
+
+<div class="footer">
+  <span>Improvement Department · SCG Chemicals</span>
+  <span>Interactive Dashboard · April 2026</span>
+</div>
+
+</div>
+
+<script>
+// ═══ DATA ═══
+const projects=[
+  {name:"Auto working file ปิดบัญชีของ Export Trade Service",progress:0,leader:"Krit L.",dept:"OMO",status:"Planning"},
+  {name:"Auto EOQ & Inventory Target",progress:0,leader:"Surawit P.",dept:"VM",status:"Pending"},
+  {name:"Logistic Optimization",progress:0,leader:"Surawit P.",dept:"OMO",status:"Pending"},
+  {name:"PLM PowerBI Dashboard Improvement",progress:0,leader:"Surawit P.",dept:"PCM",status:"Completed"},
+  {name:"Planning & Monomer Dashboard",progress:0,leader:"Surawit P.",dept:"VM",status:"Completed"},
+  {name:"Feed Ranking Improvement (PGB N'Pam)",progress:0,leader:"Surawit P.",dept:"VM",status:"Completed"},
+  {name:"Cost Report Improvement (PBB P'A)",progress:0,leader:"Surawit P.",dept:"VM",status:"Completed"},
+  {name:"PO Multisite Input and Result Improvement",progress:0,leader:"Surawit P.",dept:"VM",status:"Completed"},
+  {name:"Verified bill amount — SAP report",progress:0,leader:"Krit L.",dept:"OMO",status:"In Progress"},
+  {name:"PSP TH",progress:0,leader:"Krit L.",dept:"VM",status:"Completed"},
+  {name:"Auto sharing Docs to LSP",progress:0,leader:"Krit L.",dept:"OMO",status:"Completed"},
+  {name:"OLE: PO Domestic report",progress:0,leader:"Krit L.",dept:"OMO",status:"Completed"},
+  {name:"OMODA - TG (poly)",progress:0,leader:"Krit L.",dept:"OMO",status:"Pending"},
+  {name:"Auto-mail for LSP-TH Doc (Booker)",progress:0,leader:"Krit L.",dept:"OMO",status:"Completed"},
+  {name:"TTTC auto file",progress:0,leader:"Krit L.",dept:"OMO",status:"Completed"},
+  {name:"PSP Compounding",progress:0,leader:"Krit L.",dept:"VM",status:"Completed"},
+  {name:"BIS india autofile",progress:0,leader:"Krit L.",dept:"OMO",status:"Pending"},
+  {name:"Account Closing (BZ,CMIX,CKB,C3)",progress:0,leader:"Krit L.",dept:"OMO",status:"Pending"},
+  {name:"On hand report",progress:0,leader:"Krit L.",dept:"OMO",status:"Completed"},
+  {name:"C2/C3 sale allocation",progress:0,leader:"Jutharat K.",dept:"HC",status:"Completed"},
+  {name:"E2E dashboards",progress:0,leader:"Jutharat K.",dept:"BSC All",status:"Completed"},
+  {name:"สรุปข่าว Argus by daily",progress:0,leader:"Jutharat K.",dept:"HC",status:"Completed"},
+  {name:"LC intelligence: Adjusted prompt",progress:0,leader:"Krit L.",dept:"OMO",status:"In Progress"},
+  {name:"ปิดบัญชี: Utility",progress:0,leader:"Krit L.",dept:"OMO",status:"In Progress"},
+  {name:"(WCI) Whole chain integration",progress:0,leader:"Worakij B.",dept:"BSC All",status:"In Progress"},
+  {name:"Auto upload market price to Dolphin",progress:0,leader:"Rattanachai P.",dept:"Others",status:"In Progress"},
+  {name:"Learning Organization",progress:0,leader:"Rattanachai P.",dept:"BSC All",status:"In Progress"},
+  {name:"Ole new material and vendor work flow",progress:0,leader:"Rattanachai P.",dept:"BSC All",status:"In Progress"},
+  {name:"By product Control Tower",progress:0.10,leader:"Jutharat K.",dept:"HC",status:"In Progress"},
+  {name:"Agentic AI BOT Scheduling Production (ASP)",progress:0.12,leader:"Rattanachai P.",dept:"VM",status:"Planning"},
+  {name:"Ultra fast Feedinfo Excel",progress:0.15,leader:"Surawit P.",dept:"Feeds",status:"Planning"},
+  {name:"TradeOps360",progress:0.17,leader:"Jutharat K.",dept:"OMO",status:"Delay"},
+  {name:"Phoenix",progress:0.18,leader:"Worakij B.",dept:"BSC All",status:"In Progress"},
+  {name:"Bi-monthly meeting with Head of",progress:0.18,leader:"Rattanachai P.",dept:"BSC All",status:"In Progress"},
+  {name:"Chat with Data",progress:0.22,leader:"Surawit P.",dept:"BSC All",status:"In Progress"},
+  {name:"Yield tuning for LSP",progress:0.40,leader:"Surawit P.",dept:"VM",status:"In Progress"},
+  {name:"Optience model improvement",progress:0.40,leader:"Surawit P.",dept:"VM",status:"In Progress"},
+  {name:"Auto filled DOM truck type inquiry to order",progress:0.65,leader:"Krit L.",dept:"OMO",status:"In Progress"},
+  {name:"OMODA (Commission)",progress:0.70,leader:"Krit L.",dept:"OMO",status:"Delay"},
+  {name:"Known Feed and Sale monitoring",progress:0.71,leader:"Jutharat K.",dept:"VM",status:"In Progress"},
+  {name:"Yield tuning for ROC/MOC",progress:0.77,leader:"Surawit P.",dept:"VM",status:"Completed"},
+  {name:"Auto Follow up Payment/LC - Sending email",progress:0.80,leader:"Krit L.",dept:"OMO",status:"In Progress"},
+  {name:"P'A - J1C (Just One Click!!!)",progress:1.00,leader:"Surawit P.",dept:"VM",status:"Completed"},
+  {name:"Auto Follow up Outstanding - Sending email (Olefins)",progress:1.00,leader:"Krit L.",dept:"OMO",status:"In Progress"},
+  {name:"SUPREM-E (Supplier relationship management) (Phase1)",progress:0.80,leader:"Polpat C.",dept:"BSC All",status:"In Progress"},
+  {name:"AI gas feedstock procurement (Phase1)",progress:0.85,leader:"Polpat C.",dept:"Feeds",status:"In Progress"},
+];
+
+// ═══ STATE ═══
+let filters={status:null,leader:null,dept:null,search:""};
+let sortCol="progress",sortDir=-1;
+let expandedRow=null;
+
+// ═══ COLORS ═══
+const statusColors={
+  "In Progress":{c:"var(--blue)",bg:"var(--blue-bg)",cls:"badge-inprogress"},
+  "Completed":{c:"var(--green)",bg:"var(--green-bg)",cls:"badge-completed"},
+  "Pending":{c:"var(--amber)",bg:"var(--amber-bg)",cls:"badge-pending"},
+  "Planning":{c:"var(--purple)",bg:"var(--purple-bg)",cls:"badge-planning"},
+  "Delay":{c:"var(--red)",bg:"var(--red-bg)",cls:"badge-delay"},
+};
+const deptColors={OMO:"#4d8af0",VM:"#7c6aef",["BSC All"]:"#28d4e4",HC:"#22c988",Feeds:"#f0a030",PCM:"#b08df8",Others:"#5e7290"};
+
+// ═══ HELPERS ═══
+function getFiltered(){
+  return projects.filter(p=>{
+    if(filters.status&&filters.status!=="all"){
+      if(filters.status==="pipeline"){
+        if(p.status!=="Planning"&&p.status!=="Pending") return false;
+      } else if(p.status!==filters.status) return false;
+    }
+    if(filters.leader&&p.leader!==filters.leader) return false;
+    if(filters.dept&&p.dept!==filters.dept) return false;
+    if(filters.search&&!p.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
+    return true;
+  });
+}
+function getSorted(arr){
+  return [...arr].sort((a,b)=>{
+    let va=a[sortCol],vb=b[sortCol];
+    if(typeof va==="string") return sortDir*va.localeCompare(vb);
+    return sortDir*(va-vb);
+  });
+}
+function pctColor(p,s){
+  if(s==="Delay") return "var(--red)";
+  if(s==="Completed") return "var(--green)";
+  if(p>=0.7) return "var(--green)";
+  if(p>=0.3) return "var(--blue)";
+  if(p>0) return "var(--amber)";
+  return "var(--text4)";
+}
+function countBy(key){
+  const m={};projects.forEach(p=>{m[p[key]]=(m[p[key]]||0)+1;});return m;
+}
+
+// ═══ RENDER: KPIs ═══
+function renderKPIs(){
+  const statuses=countBy("status");
+  const kpis=[
+    {key:"all",val:projects.length,label:"Total Projects",sub:"across all depts",icon:"&#9632;",color:"var(--accent)"},
+    {key:"In Progress",val:statuses["In Progress"]||0,label:"In Progress",sub:Math.round(((statuses["In Progress"]||0)/projects.length)*100)+"%",icon:"&#9654;",color:"var(--blue)"},
+    {key:"Completed",val:statuses["Completed"]||0,label:"Completed",sub:Math.round(((statuses["Completed"]||0)/projects.length)*100)+"%",icon:"&#10003;",color:"var(--green)"},
+    {key:"Delay",val:statuses["Delay"]||0,label:"Delayed",sub:"need attention",icon:"&#9888;",color:"var(--red)"},
+    {key:"pipeline",val:(statuses["Planning"]||0)+(statuses["Pending"]||0),label:"Pipeline",sub:(statuses["Planning"]||0)+" plan · "+(statuses["Pending"]||0)+" pending",icon:"&#9201;",color:"var(--amber)"},
+  ];
+  document.getElementById("kpiRow").innerHTML=kpis.map(k=>`
+    <div class="kpi ${filters.status===k.key?'selected':''}" data-status="${k.key}" onclick="toggleFilter('status','${k.key}')">
+      <div class="kpi-icon" style="background:${k.color}20;color:${k.color};">${k.icon}</div>
+      <div class="kpi-val" style="color:${k.color};">${k.val}</div>
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>
+  `).join("");
+}
+
+// ═══ RENDER: STATUS BAR ═══
+function renderStatusBar(){
+  const order=["In Progress","Completed","Pending","Planning","Delay"];
+  const counts=countBy("status");
+  document.getElementById("statusBar").innerHTML=order.map(s=>{
+    const n=counts[s]||0;const pct=n/projects.length*100;
+    return `<div style="flex:${n};background:${statusColors[s].c};" onclick="toggleFilter('status','${s}')" title="${s}: ${n}">${pct>8?n:''}</div>`;
+  }).join("");
+  document.getElementById("statusLegend").innerHTML=order.map(s=>
+    `<div class="legend-item"><span class="legend-dot" style="background:${statusColors[s].c};"></span>${s} (${counts[s]||0})</div>`
+  ).join("");
+}
+
+// ═══ RENDER: LEADERS ═══
+function renderLeaders(){
+  const leaders=[...new Set(projects.map(p=>p.leader))];
+  const data=leaders.map(l=>{
+    const ps=projects.filter(p=>p.leader===l);
+    const active=ps.filter(p=>!["Completed"].includes(p.status)).length;
+    const comp=ps.filter(p=>p.status==="Completed").length;
+    return {name:l,total:ps.length,active,comp};
+  }).sort((a,b)=>b.total-a.total);
+  const max=data[0].total;
+  document.getElementById("leaderList").innerHTML=data.map(l=>`
+    <div class="leader-item ${filters.leader===l.name?'selected':''}" onclick="toggleFilter('leader','${l.name}')">
+      <div class="leader-name">${l.name}<span>${l.active} active · ${l.comp} done</span></div>
+      <div class="leader-bar-bg">
+        <div class="leader-seg" style="width:${l.active/max*100}%;background:var(--blue);"></div>
+        <div class="leader-seg" style="width:${l.comp/max*100}%;background:var(--green);"></div>
+      </div>
+      <div class="leader-count">${l.total}</div>
+    </div>
+  `).join("");
+}
+
+// ═══ RENDER: DEPARTMENTS ═══
+function renderDepts(){
+  const depts=countBy("dept");
+  const sorted=Object.entries(depts).sort((a,b)=>b[1]-a[1]);
+  const fullNames={OMO:"Operations & Mgmt Office",VM:"Value Maximization","BSC All":"Cross-functional",HC:"Hydrocarbon",Feeds:"Feedstock",PCM:"Planning & Control",Others:"External"};
+  document.getElementById("deptList").innerHTML=sorted.map(([d,n])=>`
+    <div class="dept-item ${filters.dept===d?'selected':''}" onclick="toggleFilter('dept','${d}')">
+      <div class="dept-color" style="background:${deptColors[d]||'var(--text4)'};"></div>
+      <div class="dept-count" style="color:${deptColors[d]||'var(--text3)'};">${n}</div>
+      <div class="dept-info"><div class="dept-name">${d}</div><div class="dept-full">${fullNames[d]||''}</div></div>
+    </div>
+  `).join("");
+}
+
+// ═══ RENDER: TABLE ═══
+function renderTable(tbodyId,countId){
+  const filtered=getFiltered();
+  const sorted=getSorted(filtered);
+  const tbody=document.getElementById(tbodyId);
+  if(sorted.length===0){
+    tbody.innerHTML=`<tr><td colspan="5"><div class="empty-state"><div class="icon">&#128270;</div><div class="msg">No projects match current filters</div></div></td></tr>`;
+  } else {
+    tbody.innerHTML=sorted.map((p,i)=>{
+      const pct=Math.round(p.progress*100);
+      const pc=pctColor(p.progress,p.status);
+      const sc=statusColors[p.status];
+      return `
+        <tr onclick="toggleDrill(this,${i})" class="${expandedRow===i?'expanded-row':''}">
+          <td>${p.name}</td>
+          <td><div class="progress-cell">
+            <div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:${pc};"></div></div>
+            <span class="progress-pct" style="color:${pc};">${pct}%</span>
+          </div></td>
+          <td class="leader-tag">${p.leader}</td>
+          <td><span class="dept-tag">${p.dept}</span></td>
+          <td><span class="badge ${sc.cls}">${p.status}</span></td>
+        </tr>
+        <tr><td colspan="5" style="padding:0;border:none;">
+          <div class="drill-panel ${expandedRow===i?'open':''}">
+            <div class="drill-grid">
+              <div class="drill-item"><div class="dl">Project</div><div class="dv">${p.name}</div></div>
+              <div class="drill-item"><div class="dl">Leader</div><div class="dv">${p.leader}</div></div>
+              <div class="drill-item"><div class="dl">Department</div><div class="dv">${p.dept}</div></div>
+              <div class="drill-item"><div class="dl">Progress</div><div class="dv" style="color:${pc};">${pct}%</div></div>
+              <div class="drill-item"><div class="dl">Status</div><div class="dv"><span class="badge ${sc.cls}">${p.status}</span></div></div>
+              <div class="drill-item"><div class="dl">Priority</div><div class="dv">${p.status==="Delay"?"&#128308; High":pct===0&&p.status==="In Progress"?"&#128992; Needs kickoff":"&#128994; Normal"}</div></div>
+            </div>
+          </div>
+        </td></tr>
+      `;
+    }).join("");
+  }
+  if(countId){
+    const el=document.getElementById(countId);
+    if(el) el.textContent=sorted.length+" of "+projects.length;
+  }
+}
+
+// ═══ RENDER: ATTENTION ═══
+function renderAttention(){
+  const delayed=projects.filter(p=>p.status==="Delay").sort((a,b)=>a.progress-b.progress);
+  const zero=projects.filter(p=>p.status==="In Progress"&&p.progress===0);
+  const pipeline=projects.filter(p=>p.status==="Planning"||p.status==="Pending");
+  
+  document.getElementById("delayedList").innerHTML=delayed.map(p=>{
+    const pct=Math.round(p.progress*100);
+    return `<div class="attention-item">
+      <div class="name">${p.name}</div>
+      <div class="meta">${p.leader}</div>
+      <div class="meta">${p.dept}</div>
+      <div class="progress-cell"><div class="progress-track"><div class="progress-fill" style="width:${pct}%;background:var(--red);"></div></div><span class="progress-pct" style="color:var(--red);">${pct}%</span></div>
+    </div>`;
+  }).join("");
+  
+  document.getElementById("zeroList").innerHTML=zero.map(p=>
+    `<div class="attention-item warning">
+      <div class="name">${p.name}</div>
+      <div class="meta">${p.leader}</div>
+      <div class="meta">${p.dept}</div>
+      <div><span class="badge badge-inprogress">0%</span></div>
+    </div>`
+  ).join("");
+  
+  document.getElementById("pipelineList").innerHTML=pipeline.map(p=>{
+    const sc=statusColors[p.status];
+    return `<div class="attention-item" style="border-left-color:${sc.c};">
+      <div class="name">${p.name}</div>
+      <div class="meta">${p.leader}</div>
+      <div class="meta">${p.dept}</div>
+      <div><span class="badge ${sc.cls}">${p.status}</span></div>
+    </div>`;
+  }).join("");
+}
+
+// ═══ RENDER: INSIGHTS ═══
+function renderInsights(){
+  const statuses=countBy("status");
+  const leaders=[...new Set(projects.map(p=>p.leader))];
+  const heaviest=leaders.map(l=>({name:l,active:projects.filter(p=>p.leader===l&&p.status!=="Completed").length})).sort((a,b)=>b.active-a.active)[0];
+  const avgProgress=projects.filter(p=>p.status==="In Progress").reduce((s,p)=>s+p.progress,0)/(statuses["In Progress"]||1);
+  const topDept=Object.entries(countBy("dept")).sort((a,b)=>b[1]-a[1])[0];
+  const nearDone=projects.filter(p=>p.progress>=0.7&&p.status==="In Progress").length;
+  
+  document.getElementById("insightCards").innerHTML=`
+    <div class="insight">
+      <div class="insight-icon">&#128200;</div>
+      <div class="insight-highlight">${Math.round(avgProgress*100)}%</div>
+      <div class="insight-title">Average Progress (Active)</div>
+      <div class="insight-desc">Average completion across ${statuses["In Progress"]} in-progress projects. ${avgProgress<0.3?"Many projects are still in early stages.":"Projects are progressing well overall."}</div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon">&#128293;</div>
+      <div class="insight-highlight">${heaviest.name}</div>
+      <div class="insight-title">Heaviest Workload</div>
+      <div class="insight-desc">${heaviest.active} active projects. Consider redistributing workload across team leaders for better balance and faster delivery.</div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon">&#127919;</div>
+      <div class="insight-highlight">${nearDone}</div>
+      <div class="insight-title">Near Completion (≥70%)</div>
+      <div class="insight-desc">${nearDone} projects are at 70% or above and could be completed soon with focused effort. Quick wins waiting to happen.</div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon">&#127970;</div>
+      <div class="insight-highlight">${topDept[0]}</div>
+      <div class="insight-title">Most Served Department</div>
+      <div class="insight-desc">${topDept[1]} projects (${Math.round(topDept[1]/projects.length*100)}% of portfolio). The Improvement team primarily supports ${topDept[0]} operations.</div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon">&#9888;&#65039;</div>
+      <div class="insight-highlight">${statuses["Delay"]||0}</div>
+      <div class="insight-title">Delayed Projects</div>
+      <div class="insight-desc">${projects.filter(p=>p.status==="Delay").map(p=>p.name).join(", ")}. Both in OMO department — investigate root cause and escalate if needed.</div>
+    </div>
+    <div class="insight">
+      <div class="insight-icon">&#128640;</div>
+      <div class="insight-highlight">${(statuses["Planning"]||0)+(statuses["Pending"]||0)}</div>
+      <div class="insight-title">Pipeline Projects</div>
+      <div class="insight-desc">${statuses["Planning"]||0} in planning, ${statuses["Pending"]||0} pending start. Ensure resource availability before initiating new projects.</div>
+    </div>
+  `;
+}
+
+// ═══ FILTER LOGIC ═══
+function toggleFilter(type,val){
+  if(filters[type]===val) filters[type]=null;
+  else filters[type]=val;
+  renderAll();
+}
+function clearFilters(){
+  filters={status:null,leader:null,dept:null,search:filters.search};
+  renderAll();
+}
+function onSearch(){
+  filters.search=document.getElementById("searchInput").value;
+  renderAll();
+}
+function renderFilterBar(){
+  const chips=[];
+  if(filters.status) chips.push({type:"status",label:"Status: "+(filters.status==="pipeline"?"Pipeline":filters.status)});
+  if(filters.leader) chips.push({type:"leader",label:"Leader: "+filters.leader});
+  if(filters.dept) chips.push({type:"dept",label:"Dept: "+filters.dept});
+  const bars=["filterBar","filterBar2"];
+  const acs=["activeFilters","activeFilters2"];
+  bars.forEach((id,i)=>{
+    const bar=document.getElementById(id);
+    const ac=document.getElementById(acs[i]);
+    if(!bar||!ac) return;
+    if(chips.length===0){bar.style.display="none";return;}
+    bar.style.display="flex";
+    ac.innerHTML=chips.map(c=>`<div class="filter-chip">${c.label}<span class="x" onclick="event.stopPropagation();toggleFilter('${c.type}','${filters[c.type]}')">&#10005;</span></div>`).join("");
+  });
+}
+
+// ═══ SORT ═══
+function sortTable(col){
+  if(sortCol===col) sortDir*=-1;
+  else{sortCol=col;sortDir=col==="progress"?-1:1;}
+  renderAll();
+}
+
+// ═══ DRILL-DOWN ═══
+function toggleDrill(tr,idx){
+  expandedRow=expandedRow===idx?null:idx;
+  renderAll();
+}
+
+// ═══ TABS ═══
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("panel-"+t.dataset.tab).classList.add("active");
+  });
+});
+
+// ═══ FULLSCREEN ═══
+function toggleFS(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+// ═══ MASTER RENDER ═══
+function renderAll(){
+  renderKPIs();
+  renderStatusBar();
+  renderLeaders();
+  renderDepts();
+  renderTable("tableBody","tableCount");
+  renderTable("tableBody2","projCount2");
+  renderAttention();
+  renderInsights();
+  renderFilterBar();
+}
+renderAll();
+</script>
+</body>
+</html>

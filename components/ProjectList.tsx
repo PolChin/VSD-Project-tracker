@@ -15,9 +15,12 @@ import {
   Calendar,
   Layers,
   Activity,
-  Presentation
+  Presentation,
+  GripVertical
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import pptxgen from 'pptxgenjs';
+import { Reorder, useDragControls } from 'framer-motion';
 import MultiSelectFilter from './MultiSelectFilter';
 
 interface ProjectListProps {
@@ -33,6 +36,8 @@ type SortConfig = {
   direction: 'asc' | 'desc';
 } | null;
 
+type ColumnKey = 'status' | 'name' | 'leader' | 'department' | 'metrics' | 'progress' | 'actions';
+
 const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNew, onEditProject, onUpdateProgress }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -41,6 +46,11 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
     status: [] as string[]
   });
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+  
+  // Column Reordering & Resizing State
+  const [columnOrder, setColumnOrder] = useState<ColumnKey[]>([
+    'status', 'name', 'leader', 'department', 'metrics', 'progress', 'actions'
+  ]);
 
   const handleSort = (key: SortConfig['key']) => {
     setSortConfig(prevSort => {
@@ -103,43 +113,226 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
   };
 
   const exportToExcel = () => {
-    const exportData = sortedProjects.flatMap(project => {
-      if (project.milestones && project.milestones.length > 0) {
-        return project.milestones.map(milestone => ({
-          'Project name': project.name || '',
-          'Leader': project.leader || '',
-          'Department': project.department || '',
-          'Progress (%)': project.progress || 0,
-          'Milestone name': milestone.name || '',
-          'Milestone description': milestone.description || '',
-          'Milestone date': milestone.date || '',
-          'Milestone status': milestone.completed ? 'Completed' : 'Pending'
-        }));
-      } else {
-        return [{
-          'Project name': project.name || '',
-          'Leader': project.leader || '',
-          'Department': project.department || '',
-          'Progress (%)': project.progress || 0,
-          'Milestone name': '',
-          'Milestone description': '',
-          'Milestone date': '',
-          'Milestone status': ''
-        }];
-      }
+    const data = sortedProjects.map(p => ({
+      'Project Name': p.name,
+      'Status': p.status,
+      'Leader': p.leader,
+      'Department': p.department,
+      'Progress': `${p.progress}%`,
+      'Tasks': p.tasks?.length || 0,
+      'Milestones': p.milestones?.length || 0
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Portfolio');
+    XLSX.writeFile(wb, `vsd_portfolio_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const exportToPowerPoint = () => {
+    const pres = new pptxgen();
+    
+    // 1. Title Slide
+    let titleSlide = pres.addSlide();
+    titleSlide.background = { color: 'F8FAFC' };
+    titleSlide.addText('VSD Project Portfolio', {
+      x: 0, y: '35%', w: '100%', align: 'center', fontSize: 44, bold: true, color: '1E293B'
+    });
+    titleSlide.addText(`Generated on ${new Date().toLocaleDateString()}`, {
+      x: 0, y: '50%', w: '100%', align: 'center', fontSize: 18, color: '64748B'
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Projects');
+    // 2. Summary Table Slide
+    let tableSlide = pres.addSlide();
+    tableSlide.addText('Portfolio Overview', { x: 0.5, y: 0.5, fontSize: 24, bold: true, color: '4F46E5' });
+
+    // Table Data
+    const headers = columnOrder
+      .filter(key => key !== 'actions')
+      .map(key => ({
+        text: key.charAt(0).toUpperCase() + key.slice(1).replace('name', 'Project Name'),
+        options: { bold: true, fill: { color: '4F46E5' }, color: 'FFFFFF', align: 'center', fontSize: 12 }
+      }));
+
+    const rows = sortedProjects.map(project => 
+      columnOrder
+        .filter(key => key !== 'actions')
+        .map(key => {
+          let text = '';
+          switch (key) {
+            case 'status': text = project.status || ''; break;
+            case 'name': text = project.name || ''; break;
+            case 'leader': text = project.leader || ''; break;
+            case 'department': text = project.department || ''; break;
+            case 'metrics': text = `Tasks: ${project.tasks?.length || 0}`; break;
+            case 'progress': text = `${project.progress || 0}%`; break;
+          }
+          return { text, options: { fontSize: 10, border: { pt: 1, color: 'E2E8F0' }, align: 'center' } };
+        })
+    );
+
+    tableSlide.addTable([headers, ...rows], {
+      x: 0.5, y: 1.2, w: 9,
+      colW: columnOrder.filter(k => k !== 'actions').map(k => {
+        switch(k) {
+          case 'name': return 3.5;
+          case 'status': return 1.0;
+          case 'leader': return 1.4;
+          case 'department': return 1.2;
+          case 'metrics': return 1.0;
+          case 'progress': return 1.2;
+          default: return 1.0;
+        }
+      }),
+      valign: 'middle'
+    });
+
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    XLSX.writeFile(workbook, `projects_export_${timestamp}.xlsx`);
+    pres.writeFile({ fileName: `vsd_portfolio_${timestamp}.pptx` });
+  };
+
+  const getColClass = (key: ColumnKey) => {
+    switch (key) {
+      case 'status': return 'w-[138px] flex-shrink-0';
+      case 'name': return 'flex-grow min-w-[260px]';
+      case 'leader': return 'w-[168px] flex-shrink-0';
+      case 'department': return 'w-[148px] flex-shrink-0';
+      case 'metrics': return 'w-[131px] flex-shrink-0';
+      case 'progress': return 'w-[148px] flex-shrink-0';
+      case 'actions': return 'w-[100px] flex-shrink-0';
+      default: return 'w-[100px] flex-shrink-0';
+    }
+  };
+
+  const renderHeaderCell = (key: ColumnKey) => {
+    return (
+      <div
+        className="relative group border-r border-slate-200/50 dark:border-slate-800/50 h-full flex items-center bg-slate-50/50 dark:bg-slate-950/20 w-full"
+      >
+        <div
+          className={`flex-grow px-4 py-4 flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors select-none overflow-hidden`}
+          onClick={() => (key !== 'metrics' && key !== 'actions') && handleSort(key as any)}
+        >
+          <GripVertical size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity absolute -left-0.5" />
+          <span className="uppercase text-[11px] font-extrabold text-slate-500 tracking-wider truncate">
+            {key === 'name' ? 'Project Name' : key}
+          </span>
+          {(key !== 'metrics' && key !== 'actions') && sortConfig?.key === key && (
+             <span className="text-indigo-500">
+               {sortConfig.direction === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} /> }
+             </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderDataCell = (key: ColumnKey, project: Project, status?: any) => {
+    const colClass = getColClass(key);
+    const milestoneCount = project.milestones?.length || 0;
+    const completedMilestones = project.milestones?.filter(m => m.completed).length || 0;
+    const taskCount = project.tasks?.length || 0;
+
+    const commonClass = `${colClass} px-4 py-4 break-words overflow-visible border-r border-slate-100 dark:border-slate-800/50`;
+
+    switch (key) {
+      case 'status':
+        return (
+          <div key="status" className={`${commonClass} flex items-center`}>
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-sm"
+              style={{
+                backgroundColor: status?.color || '#94a3b8',
+                color: '#ffffff'
+              }}
+            >
+              {project.status || 'Unknown'}
+            </span>
+          </div>
+        );
+      case 'name':
+        return (
+          <div key="name" className={`${commonClass} flex items-start`}>
+            <span className="text-[14px] font-bold text-slate-800 dark:text-white leading-snug whitespace-normal">
+              {project.name || 'Untitled Project'}
+            </span>
+          </div>
+        );
+      case 'leader':
+        return (
+          <div key="leader" className={`${commonClass} flex items-center`}>
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-5 h-5 rounded flex-shrink-0 flex items-center justify-center text-[10px] font-black" style={{ backgroundColor: `${status?.color || '#94a3b8'}20`, color: status?.color || '#94a3b8' }}>
+                {project.leader?.charAt(0) || '?'}
+              </div>
+              <span className="text-[14px] font-semibold text-slate-700 dark:text-slate-200 truncate">
+                {project.leader || 'Unassigned'}
+              </span>
+            </div>
+          </div>
+        );
+      case 'department':
+        return (
+          <div key="department" className={`${commonClass} flex items-center`}>
+            <span className="text-[14px] font-medium text-slate-600 dark:text-slate-300 truncate">
+              {project.department || 'General'}
+            </span>
+          </div>
+        );
+      case 'metrics':
+        return (
+          <div key="metrics" className={`${commonClass} flex items-center justify-center`}>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                <List size={12} className="text-indigo-400" />
+                <span>{taskCount}</span>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                <Calendar size={12} className="text-emerald-500" />
+                <span>{completedMilestones}/{milestoneCount}</span>
+              </div>
+            </div>
+          </div>
+        );
+      case 'progress':
+        return (
+          <div key="progress" className={`${commonClass} flex flex-col justify-center gap-1.5`}>
+            <div className="flex justify-between items-center text-[12px] font-bold text-slate-700 dark:text-slate-200">
+              <span>{project.progress}%</span>
+            </div>
+            <div className="h-1 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
+              <div
+                className="h-full rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${project.progress || 0}%`, backgroundColor: status?.color || '#6366f1' }}
+              />
+            </div>
+          </div>
+        );
+      case 'actions':
+        return (
+          <div key="actions" className={`${commonClass} flex items-center justify-center gap-3`}>
+            <button
+              onClick={() => onUpdateProgress(project)}
+              className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-indigo-500 hover:text-white hover:bg-indigo-600 hover:border-indigo-600 shadow-sm transition-all duration-200"
+              title="Update Progress"
+            >
+              <Presentation size={16} />
+            </button>
+            <button
+              onClick={() => onEditProject(project)}
+              className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 hover:border-slate-700 shadow-sm transition-all duration-200"
+              title="Edit Project"
+            >
+              <Edit3 size={16} />
+            </button>
+          </div>
+        );
+    }
   };
 
   return (
     <div className="w-full h-full flex flex-col gap-6 overflow-hidden">
 
-      {/* Top Action Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl flex flex-col xl:flex-row justify-between items-center gap-4 shadow-sm border border-slate-200 dark:border-slate-800 relative z-50">
 
         <div className="flex items-center gap-3 w-full xl:w-auto">
@@ -148,13 +341,12 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Project Portfolio</h2>
-            <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">Showing {sortedProjects.length} tracking nodes</p>
+            <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">Showing {sortedProjects.length} nodes</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto xl:justify-end">
 
-          {/* Search Input */}
           <div className="relative flex-grow max-w-sm">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -166,37 +358,32 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
             />
           </div>
 
-          {/* Filters Suite */}
           <div className="flex flex-wrap items-center gap-1.5 bg-slate-50 dark:bg-slate-950 p-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
             <MultiSelectFilter
               label="Dept"
               options={masterData.departments}
               selectedValues={filters.department}
               onChange={(values) => setFilters({ ...filters, department: values })}
-              className="w-[130px] flex-shrink-0"
+              className="w-[120px] flex-shrink-0"
             />
-            <div className="hidden sm:block w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
             <MultiSelectFilter
               label="Leader"
               options={masterData.leaders}
               selectedValues={filters.leader}
               onChange={(values) => setFilters({ ...filters, leader: values })}
-              className="w-[130px] flex-shrink-0"
+              className="w-[120px] flex-shrink-0"
             />
-            <div className="hidden sm:block w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
             <MultiSelectFilter
               label="Status"
               options={masterData.statuses.map(s => s.name)}
               selectedValues={filters.status}
               onChange={(values) => setFilters({ ...filters, status: values })}
-              className="w-[130px] flex-shrink-0"
+              className="w-[120px] flex-shrink-0"
             />
-
             <button
               onClick={clearFilters}
               className={`ml-0.5 p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-all 
                 ${(filters.department.length > 0 || filters.leader.length > 0 || filters.status.length > 0 || searchTerm) ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}
-              title="Clear Filters"
             >
               <XCircle size={18} />
             </button>
@@ -205,226 +392,71 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
           <div className="flex items-center gap-2">
             <button
               onClick={exportToExcel}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-semibold text-sm shadow-sm"
-              title="Export to Excel"
+              className="flex items-center justify-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 transition-colors font-bold text-xs"
             >
               <FileSpreadsheet size={16} />
-              <span className="hidden sm:inline">Export</span>
+              <span>Excel</span>
+            </button>
+            <button
+              onClick={exportToPowerPoint}
+              className="flex items-center justify-center gap-2 px-3 py-1.5 bg-indigo-600 dark:bg-indigo-50 text-white rounded-xl hover:bg-indigo-700 transition-all font-bold text-xs shadow-lg shadow-indigo-500/20"
+            >
+              <Presentation size={16} />
+              <span>PPT</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Table Layout for Projects */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative z-10 flex-grow overflow-hidden mb-2">
-        <div className="h-full overflow-auto relative rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white dark:bg-slate-900 custom-scrollbar">
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 z-30 bg-white dark:bg-slate-900 shadow-sm">
-              <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                <th
-                  className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center gap-2">
-                    Status
-                    <span className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                      {sortConfig?.key === 'status' ? (
-                        sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-indigo-500" /> : <ArrowDown size={14} className="text-indigo-500" />
-                      ) : (
-                        <ArrowUpDown size={14} className="opacity-40" />
-                      )}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  className="px-6 py-4 min-w-[300px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center gap-2">
-                    Project Name
-                    <span className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                      {sortConfig?.key === 'name' ? (
-                        sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-indigo-500" /> : <ArrowDown size={14} className="text-indigo-500" />
-                      ) : (
-                        <ArrowUpDown size={14} className="opacity-40" />
-                      )}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
-                  onClick={() => handleSort('leader')}
-                >
-                  <div className="flex items-center gap-2">
-                    Leader
-                    <span className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                      {sortConfig?.key === 'leader' ? (
-                        sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-indigo-500" /> : <ArrowDown size={14} className="text-indigo-500" />
-                      ) : (
-                        <ArrowUpDown size={14} className="opacity-40" />
-                      )}
-                    </span>
-                  </div>
-                </th>
-                <th
-                  className="px-6 py-4 whitespace-nowrap cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
-                  onClick={() => handleSort('department')}
-                >
-                  <div className="flex items-center gap-2">
-                    Department
-                    <span className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                      {sortConfig?.key === 'department' ? (
-                        sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-indigo-500" /> : <ArrowDown size={14} className="text-indigo-500" />
-                      ) : (
-                        <ArrowUpDown size={14} className="opacity-40" />
-                      )}
-                    </span>
-                  </div>
-                </th>
-                <th className="px-6 py-4 whitespace-nowrap text-center text-slate-500">
-                  <div className="flex items-center justify-center">Metrics</div>
-                </th>
-                <th
-                  className="px-6 py-4 min-w-[150px] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group select-none"
-                  onClick={() => handleSort('progress')}
-                >
-                  <div className="flex items-center gap-2">
-                    Progress
-                    <span className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                      {sortConfig?.key === 'progress' ? (
-                        sortConfig.direction === 'asc' ? <ArrowUp size={14} className="text-indigo-500" /> : <ArrowDown size={14} className="text-indigo-500" />
-                      ) : (
-                        <ArrowUpDown size={14} className="opacity-40" />
-                      )}
-                    </span>
-                  </div>
-                </th>
-                <th className="px-6 py-4 whitespace-nowrap text-right text-slate-500">
-                  <div className="flex items-center justify-end">Actions</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex-grow overflow-hidden relative z-10 flex flex-col mb-2">
+        <div className="flex-grow overflow-auto relative custom-scrollbar">
+          
+          <div className="min-w-max w-full">
+            <div className="sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 shadow-sm">
+              <Reorder.Group
+                as="div"
+                axis="x"
+                values={columnOrder}
+                onReorder={setColumnOrder}
+                className="flex w-full"
+              >
+                {columnOrder.map((colKey) => (
+                  <Reorder.Item
+                    key={colKey}
+                    value={colKey}
+                    as="div"
+                    className={getColClass(colKey)}
+                  >
+                    {renderHeaderCell(colKey)}
+                  </Reorder.Item>
+                ))}
+              </Reorder.Group>
+            </div>
+
+            <div className="divide-y divide-slate-100 dark:divide-slate-800 w-full">
               {sortedProjects.map((project) => {
                 const status = masterData.statuses.find(s => s.name === project.status);
-                const milestoneCount = project.milestones?.length || 0;
-                const completedMilestones = project.milestones?.filter(m => m.completed).length || 0;
-                const taskCount = project.tasks?.length || 0;
-
                 return (
-                  <tr
-                    key={project.id}
-                    className="group hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm"
-                        style={{
-                          backgroundColor: status?.color || '#94a3b8',
-                          color: '#ffffff'
-                        }}
-                      >
-                        {project.status || 'Unknown'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-800 dark:text-white line-clamp-1">
-                          {project.name || 'Untitled Project'}
-                        </span>
-                        {project.description && (
-                          <span className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5 font-medium">
-                            {project.description}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-black" style={{ backgroundColor: `${status?.color || '#94a3b8'}20`, color: status?.color || '#94a3b8' }}>
-                          {project.leader?.charAt(0) || '?'}
-                        </div>
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                          {project.leader || 'Unassigned'}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                        {project.department || 'General'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center justify-center gap-4">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400" title="Tasks">
-                          <List size={14} className="text-indigo-400" />
-                          <span>{taskCount}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400" title="Milestones">
-                          <Calendar size={14} className="text-emerald-500" />
-                          <span>{completedMilestones}/{milestoneCount}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col gap-1.5 w-full">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-bold text-slate-700 dark:text-slate-200">{project.progress}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                          <div
-                            className="h-full rounded-full transition-all duration-700 ease-out"
-                            style={{ width: `${project.progress || 0}%`, backgroundColor: status?.color || '#6366f1' }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => onUpdateProgress(project)}
-                          className="p-1.5 text-indigo-400 hover:text-indigo-600 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all shadow-sm"
-                          title="Update Progress"
-                        >
-                          <Presentation size={16} />
-                        </button>
-                        <button
-                          onClick={() => onEditProject(project)}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-lg transition-all shadow-sm focus:opacity-100"
-                          title="Edit Project"
-                        >
-                          <Edit3 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <div key={project.id} className="flex group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors w-full">
+                    {columnOrder.map((colKey) => renderDataCell(colKey, project, status))}
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
 
-          {sortedProjects.length === 0 && (
-            <div className="py-16 flex flex-col items-center justify-center text-center bg-transparent">
-              <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-4">
-                <Activity size={32} className="text-slate-300 dark:text-slate-600" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">Portfolio Empty</h3>
-              <p className="text-[13px] font-medium text-slate-500 max-w-sm leading-relaxed mb-6">
-                No tracking nodes match your current parameters. Adjust your filters or deploy a new project node.
-              </p>
-              <button
-                onClick={clearFilters}
-                className="px-6 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors"
-              >
-                Clear All Filters
-              </button>
+              {sortedProjects.length === 0 && (
+                <div className="py-24 flex flex-col items-center justify-center text-center">
+                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-6">
+                    <Search size={32} className="text-slate-300 dark:text-slate-600" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-500">No project nodes found</h3>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
     </div>
   );
 };
-
 export default ProjectList;

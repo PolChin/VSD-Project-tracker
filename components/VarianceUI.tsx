@@ -300,16 +300,19 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
   useEffect(() => {
     if (!selectedProjectId) return;
 
-    const fetchHistory = async () => {
+    const fetchUnifiedHistory = async () => {
       setLoading(true);
       try {
-        const q = query(
+        const project = projects.find(p => p.id === selectedProjectId);
+        
+        // 1. Fetch from projects_history (Registration & Manual Edits)
+        const qHistory = query(
           collection(db, 'projects_history'),
           where('projectId', '==', selectedProjectId),
           orderBy('updatedAt', 'desc')
         );
-        const snap = await getDocs(q);
-        const data = snap.docs.map(d => {
+        const snapHistory = await getDocs(qHistory);
+        const historyData = snapHistory.docs.map(d => {
           const docData = d.data({ serverTimestamps: 'estimate' });
           let updatedStr = new Date().toISOString();
           if (docData.updatedAt) {
@@ -330,17 +333,57 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
             tasks: (docData.tasks || []).map((t: any) => ({ ...t })),
             milestones: (docData.milestones || []).map((m: any) => ({ ...m }))
           };
-        }) as ProjectHistory[];
-        setHistory(data);
-        if (data.length > 0) setExpandedSnapshotId(data[0].id);
+        });
+
+        // 2. Fetch from weekly_updates (Recurring Progress tracked per week)
+        const qWeekly = query(
+          collection(db, 'weekly_updates'),
+          where('projectId', '==', selectedProjectId)
+        );
+        const snapWeekly = await getDocs(qWeekly);
+        const weeklyData = snapWeekly.docs.map(d => {
+          const docData = d.data();
+          // Only include if updatedAt exists and there is either progress or a summary
+          if (!docData.updatedAt) return null;
+          
+          const progress = Number(docData.progress || 0);
+          const summary = String(docData.summary || '').trim();
+          const issues = String(docData.issues || '').trim();
+          const nextSteps = String(docData.nextSteps || '').trim();
+
+          // Skip "empty" updates that might have been accidentally created with 0 progress and no text
+          if (progress === 0 && !summary && !issues && !nextSteps) return null;
+
+          return {
+            id: d.id,
+            projectId: String(docData.projectId || ''),
+            name: project?.name || 'Untitled',
+            leader: project?.leader || 'N/A',
+            department: project?.department || 'N/A',
+            status: String(docData.status || 'Update'),
+            progress: progress,
+            updatedAt: String(docData.updatedAt),
+            description: summary,
+            tasks: project?.tasks || [],
+            milestones: project?.milestones || [],
+            isWeeklyUpdate: true
+          };
+        }).filter(item => item !== null) as ProjectHistory[];
+
+        // 3. Merge and Sort Descending
+        const combined = [...historyData, ...weeklyData] as ProjectHistory[];
+        combined.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        
+        setHistory(combined);
+        if (combined.length > 0) setExpandedSnapshotId(combined[0].id);
       } catch (err: any) {
-        console.error("History fetch failed:", err?.message || "Internal Error");
+        console.error("Unified history fetch failed:", err?.message || "Internal Error");
       } finally {
         setLoading(false);
       }
     };
-    fetchHistory();
-  }, [selectedProjectId]);
+    fetchUnifiedHistory();
+  }, [selectedProjectId, projects]);
 
   const calculateDateDiff = (d1: string, d2: string) => {
     const diffTime = new Date(d1).getTime() - new Date(d2).getTime();
