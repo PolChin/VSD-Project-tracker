@@ -135,11 +135,17 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
     }
   };
 
+  const handleBackdropClick = () => {
+    if (window.confirm("You have unsaved changes. Are you sure you want to close this window?\n\n(Click OK to exit without saving, or Cancel to continue editing.)")) {
+      onClose();
+    }
+  };
+
   const existingDataForWeek = updatesByWeek[selectedWeekId];
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity" onClick={onClose} />
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity" onClick={handleBackdropClick} />
       <div className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800 max-h-[90vh]">
         
         {/* Left Side: Form */}

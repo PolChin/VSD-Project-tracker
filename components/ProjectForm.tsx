@@ -563,7 +563,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
 
       {/* DELETE CONFIRMATION MODAL */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setShowDeleteConfirm(false)} />
           <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2rem] border border-white/20 shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
             <div className="flex flex-col items-center text-center">

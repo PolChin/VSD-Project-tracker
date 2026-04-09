@@ -17,13 +17,13 @@ import VarianceUI from './components/VarianceUI';
 import LeaderAnalytics from './components/LeaderAnalytics';
 import WeeklyVisualboard from './components/WeeklyVisualboard';
 import DashboardReport from './components/DashboardReport';
-import { 
-  LayoutDashboard, 
-  Layers, 
-  Activity, 
-  Sun, 
-  Moon, 
-  Users, 
+import {
+  LayoutDashboard,
+  Layers,
+  Activity,
+  Sun,
+  Moon,
+  Users,
   Plus,
   Box,
   Fingerprint,
@@ -37,7 +37,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [progressUpdateProject, setProgressUpdateProject] = useState<{project: Project, weekId?: string} | null>(null);
+  const [progressUpdateProject, setProgressUpdateProject] = useState<{ project: Project, weekId?: string } | null>(null);
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('theme') === 'dark' ||
       (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -143,6 +143,12 @@ const App: React.FC = () => {
     setEditingProject(null);
   };
 
+  const handleBackdropClick = () => {
+    if (window.confirm("You have unsaved changes. Are you sure you want to close this window?\n\n(Click OK to exit without saving, or Cancel to continue editing.)")) {
+      handleCloseModal();
+    }
+  };
+
   const handleEditProject = (project: Project) => {
     setEditingProject(project);
   };
@@ -153,12 +159,12 @@ const App: React.FC = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 transition-colors duration-300">
-      
+
       {/* Top Navigation Bar */}
       <nav className="flex-shrink-0 sticky top-0 z-50 w-full bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            
+
             {/* Branding */}
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-indigo-600 dark:bg-indigo-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
@@ -210,7 +216,7 @@ const App: React.FC = () => {
               >
                 {isDark ? <Sun size={20} /> : <Moon size={20} />}
               </button>
-              
+
               <button
                 onClick={() => setShowAddModal(true)}
                 className="hidden sm:flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-4 py-2 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95"
@@ -219,7 +225,7 @@ const App: React.FC = () => {
                 <span>New Project</span>
               </button>
             </div>
-            
+
           </div>
         </div>
       </nav>
@@ -229,9 +235,9 @@ const App: React.FC = () => {
         {activeTab === 'dashboard' && <DashboardReport projects={projects} masterData={masterData} />}
         {activeTab === 'timeline' && <GanttDashboard projects={projects} masterData={masterData} />}
         {activeTab === 'weekly' && (
-          <WeeklyVisualboard 
-            projects={projects} 
-            masterData={masterData} 
+          <WeeklyVisualboard
+            projects={projects}
+            masterData={masterData}
             onUpdateProgress={(project, weekId) => setProgressUpdateProject({ project, weekId })}
           />
         )}
@@ -262,19 +268,19 @@ const App: React.FC = () => {
         />
       )}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6">
           <div
             className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity"
-            onClick={handleCloseModal}
+            onClick={handleBackdropClick}
           />
           <div className="relative w-full max-w-7xl max-h-[95vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
             <div className="flex-grow overflow-y-auto custom-scrollbar p-6">
-               <ProjectForm
-                  masterData={masterData}
-                  onComplete={handleCloseModal}
-                  initialProject={editingProject || undefined}
-                  onClose={handleCloseModal} // Assuming ProjectForm handles its own close button if passed, otherwise we can wrap it
-                />
+              <ProjectForm
+                masterData={masterData}
+                onComplete={handleCloseModal}
+                initialProject={editingProject || undefined}
+                onClose={handleCloseModal} // Assuming ProjectForm handles its own close button if passed, otherwise we can wrap it
+              />
             </div>
           </div>
         </div>
@@ -283,25 +289,25 @@ const App: React.FC = () => {
       {/* Footer System Status */}
       <footer className="flex-shrink-0 mt-auto border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-           
-           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-             <Fingerprint size={14} />
-             <span className="text-[10px] font-bold tracking-widest uppercase">VSD Secure Node • v2.0</span>
-           </div>
 
-           <div className="flex flex-wrap items-center justify-center gap-4">
-              {masterData.statuses.map((status) => (
-                <div key={status.id} className="flex items-center gap-1.5">
-                  <div
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: status.color }}
-                  />
-                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
-                    {status.name}
-                  </span>
-                </div>
-              ))}
-            </div>
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+            <Fingerprint size={14} />
+            <span className="text-[10px] font-bold tracking-widest uppercase">VSD Secure Node • v2.0</span>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            {masterData.statuses.map((status) => (
+              <div key={status.id} className="flex items-center gap-1.5">
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: status.color }}
+                />
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
+                  {status.name}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </footer>
     </div>
