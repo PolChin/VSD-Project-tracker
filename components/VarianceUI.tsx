@@ -330,6 +330,7 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
             progress: Number(docData.progress || 0),
             updatedAt: updatedStr,
             description: String(docData.description || ''),
+            ciNo: docData.ciNo ? String(docData.ciNo) : '',
             tasks: (docData.tasks || []).map((t: any) => ({ ...t })),
             milestones: (docData.milestones || []).map((m: any) => ({ ...m }))
           };
@@ -364,6 +365,7 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
             progress: progress,
             updatedAt: String(docData.updatedAt),
             description: summary,
+            ciNo: project?.ciNo || '',
             tasks: project?.tasks || [],
             milestones: project?.milestones || [],
             isWeeklyUpdate: true

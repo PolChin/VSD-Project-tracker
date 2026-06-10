@@ -51,7 +51,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
     status: initialProject?.status || '',
     progress: initialProject?.progress || 0,
     tasks: sanitizeTasks(initialProject?.tasks),
-    milestones: sanitizeMilestones(initialProject?.milestones)
+    milestones: sanitizeMilestones(initialProject?.milestones),
+    ciNo: initialProject?.ciNo || ''
   });
 
   const isEditMode = !!initialProject;
@@ -166,7 +167,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
         progress: Number(formData.progress),
         tasks: sanitizeTasks(formData.tasks),
         milestones: sanitizeMilestones(formData.milestones),
-        updatedAt: timestampStr
+        updatedAt: timestampStr,
+        ciNo: String(formData.ciNo || '')
       };
 
       const now = new Date();
@@ -353,22 +355,37 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
             </div>
           </div>
 
-          <div className="group">
-            <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
-              STATUS <span className="text-rose-500 font-bold">*</span>
-            </label>
-            <select 
-              value={formData.status}
-              onChange={e => {
-                setFormData({ ...formData, status: e.target.value });
-                if (errors.status) setErrors(prev => { const n = {...prev}; delete n.status; return n; });
-              }}
-              className={`w-full bg-slate-50 dark:bg-slate-800 border ${errors.status ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all text-[10px] font-black uppercase text-slate-800 dark:text-slate-100 tracking-wider appearance-none cursor-pointer shadow-sm`}
-            >
-              <option value="" className="dark:bg-slate-800">Select Status</option>
-              {masterData.statuses.map(s => <option key={s.id} value={s.name} className="dark:bg-slate-800">{s.name}</option>)}
-            </select>
-            {errors.status && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.status}</div>}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="group">
+              <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
+                STATUS <span className="text-rose-500 font-bold">*</span>
+              </label>
+              <select 
+                value={formData.status}
+                onChange={e => {
+                  setFormData({ ...formData, status: e.target.value });
+                  if (errors.status) setErrors(prev => { const n = {...prev}; delete n.status; return n; });
+                }}
+                className={`w-full bg-slate-50 dark:bg-slate-800 border ${errors.status ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-700'} rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 transition-all text-[10px] font-black uppercase text-slate-800 dark:text-slate-100 tracking-wider appearance-none cursor-pointer shadow-sm`}
+              >
+                <option value="" className="dark:bg-slate-800">Select Status</option>
+                {masterData.statuses.map(s => <option key={s.id} value={s.name} className="dark:bg-slate-800">{s.name}</option>)}
+              </select>
+              {errors.status && <div className="mt-1 flex items-center gap-1 text-rose-500 text-[9px] font-bold uppercase"><AlertCircle size={10} /> {errors.status}</div>}
+            </div>
+
+            <div className="group">
+              <label className="block text-[9px] font-black uppercase text-indigo-900/60 dark:text-indigo-400 mb-1.5 tracking-widest ml-1">
+                CI NO.
+              </label>
+              <input 
+                type="text" 
+                value={formData.ciNo}
+                onChange={e => setFormData({ ...formData, ciNo: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 dark:focus:ring-indigo-500/30 focus:bg-white dark:focus:bg-slate-900 transition-all text-xs font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                placeholder="CI Number"
+              />
+            </div>
           </div>
         </div>
 

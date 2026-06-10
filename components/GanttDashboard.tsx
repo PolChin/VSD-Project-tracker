@@ -361,7 +361,9 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate leading-tight">{project.name}</span>
-                            <span className="text-[8px] uppercase font-black text-indigo-500 dark:text-indigo-400 mt-0.5">{project.leader}</span>
+                            <span className="text-[8px] uppercase font-black text-indigo-500 dark:text-indigo-400 mt-0.5">
+                              {project.leader} {project.ciNo ? `• CI: ${project.ciNo}` : ''}
+                            </span>
                           </div>
                         </div>
 

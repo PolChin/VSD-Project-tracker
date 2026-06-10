@@ -28,6 +28,7 @@ export interface Project {
   updatedAt: string; // ISO format string
   description?: string;
   projectId?: string;
+  ciNo?: string;
 }
 
 export interface ProjectHistory extends Project {

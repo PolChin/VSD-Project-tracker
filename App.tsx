@@ -100,7 +100,8 @@ const App: React.FC = () => {
             completed: !!m.completed
           })) as Milestone[],
           updatedAt: updatedStr,
-          description: String(data.description || '')
+          description: String(data.description || ''),
+          ciNo: data.ciNo ? String(data.ciNo) : ''
         };
       }) as Project[];
 

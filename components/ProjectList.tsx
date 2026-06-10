@@ -32,11 +32,11 @@ interface ProjectListProps {
 }
 
 type SortConfig = {
-  key: 'name' | 'leader' | 'department' | 'status' | 'progress';
+  key: 'name' | 'leader' | 'department' | 'status' | 'progress' | 'ciNo';
   direction: 'asc' | 'desc';
 } | null;
 
-type ColumnKey = 'status' | 'name' | 'leader' | 'department' | 'metrics' | 'progress' | 'actions';
+type ColumnKey = 'status' | 'name' | 'ciNo' | 'leader' | 'department' | 'metrics' | 'progress' | 'actions';
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNew, onEditProject, onUpdateProgress }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,7 +49,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
   
   // Column Reordering & Resizing State
   const [columnOrder, setColumnOrder] = useState<ColumnKey[]>([
-    'status', 'name', 'leader', 'department', 'metrics', 'progress', 'actions'
+    'status', 'name', 'ciNo', 'leader', 'department', 'metrics', 'progress', 'actions'
   ]);
 
   const handleSort = (key: SortConfig['key']) => {
@@ -68,7 +68,8 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
     return projects.filter(p => {
       const matchSearch = !searchTerm ||
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (p.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (p.ciNo || '').toLowerCase().includes(searchTerm.toLowerCase());
 
       const pDept = (p.department || '').toString().trim().toUpperCase();
       const matchDept = filters.department.length === 0 ||
@@ -99,6 +100,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
         case 'department': aValue = a.department || ''; bValue = b.department || ''; break;
         case 'status': aValue = a.status || ''; bValue = b.status || ''; break;
         case 'progress': aValue = a.progress || 0; bValue = b.progress || 0; break;
+        case 'ciNo': aValue = a.ciNo || ''; bValue = b.ciNo || ''; break;
       }
 
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -115,6 +117,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
   const exportToExcel = () => {
     const data = sortedProjects.map(p => ({
       'Project Name': p.name,
+      'CI No.': p.ciNo || '',
       'Status': p.status,
       'Leader': p.leader,
       'Department': p.department,
@@ -150,7 +153,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
     const headers = columnOrder
       .filter(key => key !== 'actions')
       .map(key => ({
-        text: key.charAt(0).toUpperCase() + key.slice(1).replace('name', 'Project Name'),
+        text: key.charAt(0).toUpperCase() + key.slice(1).replace('name', 'Project Name').replace('ciNo', 'CI No.'),
         options: { bold: true, fill: { color: '4F46E5' }, color: 'FFFFFF', align: 'center', fontSize: 12 }
       }));
 
@@ -162,6 +165,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
           switch (key) {
             case 'status': text = project.status || ''; break;
             case 'name': text = project.name || ''; break;
+            case 'ciNo': text = project.ciNo || ''; break;
             case 'leader': text = project.leader || ''; break;
             case 'department': text = project.department || ''; break;
             case 'metrics': text = `Tasks: ${project.tasks?.length || 0}`; break;
@@ -175,12 +179,13 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
       x: 0.5, y: 1.2, w: 9,
       colW: columnOrder.filter(k => k !== 'actions').map(k => {
         switch(k) {
-          case 'name': return 3.5;
+          case 'name': return 2.8;
           case 'status': return 1.0;
-          case 'leader': return 1.4;
-          case 'department': return 1.2;
-          case 'metrics': return 1.0;
-          case 'progress': return 1.2;
+          case 'ciNo': return 1.0;
+          case 'leader': return 1.2;
+          case 'department': return 1.0;
+          case 'metrics': return 0.8;
+          case 'progress': return 1.0;
           default: return 1.0;
         }
       }),
@@ -194,7 +199,8 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
   const getColClass = (key: ColumnKey) => {
     switch (key) {
       case 'status': return 'w-[138px] flex-shrink-0';
-      case 'name': return 'flex-grow min-w-[260px]';
+      case 'name': return 'flex-grow min-w-[200px]';
+      case 'ciNo': return 'w-[120px] flex-shrink-0';
       case 'leader': return 'w-[168px] flex-shrink-0';
       case 'department': return 'w-[148px] flex-shrink-0';
       case 'metrics': return 'w-[131px] flex-shrink-0';
@@ -215,7 +221,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
         >
           <GripVertical size={14} className="text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity absolute -left-0.5" />
           <span className="uppercase text-[11px] font-extrabold text-slate-500 tracking-wider truncate">
-            {key === 'name' ? 'Project Name' : key}
+            {key === 'name' ? 'Project Name' : key === 'ciNo' ? 'CI No.' : key}
           </span>
           {(key !== 'metrics' && key !== 'actions') && sortConfig?.key === key && (
              <span className="text-indigo-500">
@@ -255,6 +261,14 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
           <div key="name" className={`${commonClass} flex items-start`}>
             <span className="text-[14px] font-bold text-slate-800 dark:text-white leading-snug whitespace-normal">
               {project.name || 'Untitled Project'}
+            </span>
+          </div>
+        );
+      case 'ciNo':
+        return (
+          <div key="ciNo" className={`${commonClass} flex items-center`}>
+            <span className="text-[13px] font-mono font-bold text-slate-700 dark:text-slate-300 truncate">
+              {project.ciNo || '-'}
             </span>
           </div>
         );

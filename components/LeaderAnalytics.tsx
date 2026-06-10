@@ -204,7 +204,14 @@ const LeaderAnalytics: React.FC<LeaderAnalyticsProps> = ({ projects, masterData 
                       return (
                         <div key={project.id} className="group p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-lg hover:border-indigo-200 dark:hover:border-indigo-800 flex flex-col gap-4">
                           <div className="flex justify-between items-start">
-                            <h5 className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate pr-2">{project.name}</h5>
+                            <div className="truncate pr-2">
+                              <h5 className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">{project.name}</h5>
+                              {project.ciNo && (
+                                <span className="text-[10px] font-mono font-bold text-slate-400 block mt-0.5">
+                                  CI: {project.ciNo}
+                                </span>
+                              )}
+                            </div>
                             <span className="px-2.5 py-1 rounded-md text-[9px] font-black uppercase text-white shadow-sm flex-shrink-0" style={{ backgroundColor: statusColor }}>{project.status}</span>
                           </div>
                           

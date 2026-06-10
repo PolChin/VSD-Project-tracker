@@ -50,13 +50,18 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
   const [deptFilter, setDeptFilter] = useState<string[]>(['All']);
   const [leaderFilter, setLeaderFilter] = useState<string[]>(['All']);
   const [statusFilter, setStatusFilter] = useState<string[]>(['All']);
+  const [visualMode, setVisualMode] = useState<'single' | 'triple'>('triple');
+  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   const displayWeeks = useMemo(() => {
+    if (visualMode === 'single') {
+      return [currentWeek];
+    }
     const w1 = currentWeek;
     const w2 = getPreviousWeekId(w1);
     const w3 = getPreviousWeekId(w2);
     return [w1, w2, w3];
-  }, [currentWeek]);
+  }, [currentWeek, visualMode]);
 
   // Set default status filter once masterData is available
   useEffect(() => {
@@ -95,7 +100,8 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
       const matchSearch = !searchQuery || 
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         p.leader.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.department.toLowerCase().includes(searchQuery.toLowerCase());
+        p.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.ciNo || '').toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchDept = deptFilter.includes('All') || deptFilter.includes(p.department);
       const matchLeader = leaderFilter.includes('All') || leaderFilter.includes(p.leader);
@@ -133,6 +139,29 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
     }
 
     const statusColor = masterData.statuses.find(s => s.name === update.status)?.color || '#94a3b8';
+    const cardKey = `${project.id}-${weekId}`;
+    const isExpanded = !!expandedCards[cardKey];
+    
+    const summaryThreshold = 90;
+    const issuesThreshold = 75;
+    const nextStepsThreshold = 75;
+    
+    const hasLongText = 
+      (update.summary && update.summary.length > summaryThreshold) ||
+      (update.issues && update.issues.length > issuesThreshold) ||
+      (update.nextSteps && update.nextSteps.length > nextStepsThreshold);
+
+    const renderTextContent = (text: string, threshold: number, icon: React.ReactNode, textClass: string) => {
+      const isLong = text.length > threshold;
+      const showFull = isExpanded || !isLong;
+      const displayText = showFull ? text : `${text.slice(0, threshold)}...`;
+      return (
+        <div className={textClass}>
+          {icon}
+          {displayText}
+        </div>
+      );
+    };
 
     return (
       <div
@@ -150,24 +179,44 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
         </div>
 
         <div className="flex-grow space-y-2 mt-1 pl-2 pb-1 text-left">
-          {update.summary && (
-            <div className="text-[10px] text-slate-700 dark:text-slate-300 font-medium leading-relaxed" title={update.summary}>
-              <FileText size={10} className="inline mr-1 opacity-50 mb-0.5" />{update.summary}
-            </div>
+          {update.summary && renderTextContent(
+            update.summary,
+            summaryThreshold,
+            <FileText size={10} className="inline mr-1 opacity-50 mb-0.5" />,
+            "text-[10px] text-slate-700 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line"
           )}
           
           {(update.issues || update.nextSteps) && (
             <div className="space-y-1.5 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/50">
-              {update.issues && (
-                <div className="text-[9px] text-rose-700 dark:text-rose-400 font-bold leading-snug" title={update.issues}>
-                  <AlertCircle size={9} className="inline mr-1 text-rose-500 mb-0.5" />{update.issues}
-                </div>
+              {update.issues && renderTextContent(
+                update.issues,
+                issuesThreshold,
+                <AlertCircle size={9} className="inline mr-1 text-rose-500 mb-0.5" />,
+                "text-[9px] text-rose-700 dark:text-rose-400 font-bold leading-snug whitespace-pre-line"
               )}
-              {update.nextSteps && (
-                <div className="text-[9px] text-emerald-700 dark:text-emerald-400 font-bold leading-snug" title={update.nextSteps}>
-                  <CheckCircle2 size={9} className="inline mr-1 text-emerald-500 mb-0.5" />{update.nextSteps}
-                </div>
+              {update.nextSteps && renderTextContent(
+                update.nextSteps,
+                nextStepsThreshold,
+                <CheckCircle2 size={9} className="inline mr-1 text-emerald-500 mb-0.5" />,
+                "text-[9px] text-emerald-700 dark:text-emerald-400 font-bold leading-snug whitespace-pre-line"
               )}
+            </div>
+          )}
+
+          {hasLongText && (
+            <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/50 flex justify-end">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpandedCards(prev => ({
+                    ...prev,
+                    [cardKey]: !isExpanded
+                  }));
+                }}
+                className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors flex items-center gap-0.5"
+              >
+                {isExpanded ? 'Show Less ▲' : 'Show More ▼'}
+              </button>
             </div>
           )}
         </div>
@@ -192,6 +241,30 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto xl:justify-end">
+          {/* View Mode Toggle */}
+          <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+            <button
+              onClick={() => setVisualMode('triple')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                visualMode === 'triple'
+                  ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              3 Weeks
+            </button>
+            <button
+              onClick={() => setVisualMode('single')}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                visualMode === 'single'
+                  ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              }`}
+            >
+              Single Week
+            </button>
+          </div>
+
           {/* Week Navigation */}
           <div className="flex items-center bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
             <button
@@ -279,7 +352,7 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
           </div>
         ) : (
           <div className="h-full overflow-auto relative rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner bg-white dark:bg-slate-900 custom-scrollbar">
-            <table className="w-full text-left border-collapse min-w-[1000px] table-fixed">
+            <table className={`w-full text-left border-collapse ${visualMode === 'single' ? 'min-w-[800px]' : 'min-w-[1000px]'} table-fixed`}>
               <thead className="sticky top-0 z-30 bg-white dark:bg-slate-900 shadow-sm">
                 <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-widest">
                   <th className="px-6 py-4 w-[280px]">Project Name</th>
@@ -293,7 +366,7 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
                     const isLatestReportWeek = week === defaultWeek;
 
                     return (
-                      <th key={week} className="px-4 py-4 w-[310px] text-center border-l border-slate-200 dark:border-slate-800/50">
+                      <th key={week} className={`px-4 py-4 ${visualMode === 'single' ? 'w-auto' : 'w-[310px]'} text-center border-l border-slate-200 dark:border-slate-800/50`}>
                         <div className="flex flex-col items-center">
                           <span className="text-slate-700 dark:text-slate-300">
                             {week} {isLatestReportWeek ? <span className="text-indigo-500">(Latest)</span> : ''}
@@ -315,14 +388,16 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
                       {/* Project Name */}
                       <td className="px-6 py-5">
                         <h4 className="text-[13px] font-bold text-slate-900 dark:text-white leading-snug whitespace-normal" title={project.name}>{project.name}</h4>
+                        {project.ciNo && (
+                          <div className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 mt-1">
+                            CI No: {project.ciNo}
+                          </div>
+                        )}
                       </td>
 
                       {/* Leader */}
                       <td className="px-4 py-5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500">
-                            {project.leader?.charAt(0) || '?'}
-                          </div>
+                        <div className="flex items-center">
                           <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest truncate">{project.leader}</span>
                         </div>
                       </td>

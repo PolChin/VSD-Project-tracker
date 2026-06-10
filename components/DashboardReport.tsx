@@ -356,13 +356,13 @@ const DashboardReport: React.FC<DashboardReportProps> = ({ projects, masterData 
                <div className="flex items-center gap-2 mb-3 text-rose-600 dark:text-rose-400 uppercase tracking-widest text-[11px] font-black shrink-0">
                  <AlertTriangle size={14} /> Delayed Projects
                </div>
-               <div className="overflow-y-scroll custom-scrollbar flex-grow space-y-2 pr-1">
+                 <div className="overflow-y-scroll custom-scrollbar flex-grow space-y-2 pr-1">
                   {delayedProjects.length === 0 && <span className="text-[10px] font-bold text-slate-400">No delayed projects in view.</span>}
                   {delayedProjects.map(p => (
                     <div key={p.id} className="bg-white dark:bg-slate-900 border-l-4 border-rose-500 rounded-lg p-2.5 flex flex-col gap-1 shadow-sm">
                        <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{p.name}</span>
                        <div className="flex justify-between items-center text-[9px] text-slate-500 font-semibold gap-2">
-                         <span className="truncate">{p.leader} · {p.department}</span>
+                         <span className="truncate">{p.leader} · {p.department} {p.ciNo ? `· ${p.ciNo}` : ''}</span>
                          <span className="font-mono text-rose-500 font-black shrink-0">{p.progress}%</span>
                        </div>
                     </div>
@@ -381,7 +381,7 @@ const DashboardReport: React.FC<DashboardReportProps> = ({ projects, masterData 
                     <div key={p.id} className="bg-white dark:bg-slate-900 border-l-4 border-amber-500 rounded-lg p-2.5 flex flex-col gap-1 shadow-sm">
                        <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 line-clamp-1">{p.name}</span>
                        <div className="flex justify-between items-center text-[9px] text-slate-500 font-semibold gap-2">
-                         <span className="truncate">{p.leader} · {p.department}</span>
+                         <span className="truncate">{p.leader} · {p.department} {p.ciNo ? `· ${p.ciNo}` : ''}</span>
                          <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-black uppercase text-[8px] shrink-0">0%</span>
                        </div>
                     </div>
@@ -401,7 +401,7 @@ const DashboardReport: React.FC<DashboardReportProps> = ({ projects, masterData 
                   <div key={p.id} className="bg-slate-50/50 dark:bg-slate-950/50 border-l-[3px] rounded-lg p-2.5 flex flex-row justify-between items-center gap-3 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/50" style={{ borderLeftColor: getStatusColor(p.status) }}>
                      <div className="flex flex-col overflow-hidden">
                        <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">{p.name}</span>
-                       <span className="text-[9px] text-slate-500 font-semibold truncate mt-0.5">{p.leader} · {p.department}</span>
+                       <span className="text-[9px] text-slate-500 font-semibold truncate mt-0.5">{p.leader} · {p.department} {p.ciNo ? `· ${p.ciNo}` : ''}</span>
                      </div>
                      <span className="px-2 py-0.5 flex-shrink-0 rounded text-[8px] font-black uppercase tracking-wider text-white shadow-sm" style={{ backgroundColor: getStatusColor(p.status) }}>
                        {p.status}
