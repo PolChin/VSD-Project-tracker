@@ -146,21 +146,21 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity" onClick={handleBackdropClick} />
-      <div className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800 max-h-[90vh]">
+      <div className="relative w-full max-w-5xl h-[85vh] sm:h-[90vh] max-h-[95vh] bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
         
         {/* Left Side: Form */}
-        <div className="w-full md:w-1/2 p-8 flex flex-col bg-slate-50 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-800 h-[80vh] md:h-[90vh]">
-          <div className="flex justify-between items-start mb-6 flex-shrink-0">
+        <form onSubmit={handleSubmit} className="w-full md:w-1/2 flex flex-col bg-slate-50 dark:bg-slate-900/50 border-r border-slate-200 dark:border-slate-800 h-full overflow-hidden">
+          <div className="p-8 pb-4 flex justify-between items-start flex-shrink-0">
             <div>
                <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Update Progress</h3>
                <p className="text-[11px] uppercase font-black tracking-widest text-slate-500 mt-1">{project.name}</p>
             </div>
-            <button onClick={onClose} className="md:hidden p-2 bg-slate-200 dark:bg-slate-800 rounded-full text-slate-500">
+            <button type="button" onClick={onClose} className="md:hidden p-2 bg-slate-200 dark:bg-slate-800 rounded-full text-slate-500">
               <X size={18} />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-grow overflow-y-auto custom-scrollbar pr-2 space-y-5">
+          <div className="flex-grow overflow-y-auto custom-scrollbar px-8 pb-4 space-y-5 pr-6">
             {/* Overall Progress */}
             <div>
               <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Overall Progress</label>
@@ -232,15 +232,17 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
               <label className="flex items-center gap-1.5 text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-2"><CheckCircle2 size={12}/> Next Steps</label>
               <textarea value={form.nextSteps} onChange={e => setForm({...form, nextSteps: e.target.value})} placeholder="Action plan for next week..." className="w-full h-20 px-6 py-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20 text-sm font-medium text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none shadow-sm"></textarea>
             </div>
-           
+          </div>
+
+          <div className="p-8 pt-4 border-t border-slate-200 dark:border-slate-800 flex-shrink-0 bg-white/50 dark:bg-slate-900/50">
             <button type="submit" disabled={isSaving} className="w-full flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-500/30 transition-all disabled:opacity-50">
               <Save size={18} /> {isSaving ? 'Saving...' : existingDataForWeek ? 'Save Updated Record' : 'Post Weekly Update'}
             </button>
-          </form>
-        </div>
+          </div>
+        </form>
 
         {/* Right Side: History */}
-        <div className="hidden md:flex w-full md:w-1/2 p-0 flex-col bg-white dark:bg-slate-900 h-[90vh]">
+        <div className="hidden md:flex w-full md:w-1/2 p-0 flex-col bg-white dark:bg-slate-900 h-full overflow-hidden">
           <div className="p-8 pb-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0 flex justify-between items-start">
             <div>
               <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2"><Clock size={16} /> Update History</h3>
