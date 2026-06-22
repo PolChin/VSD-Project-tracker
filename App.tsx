@@ -274,15 +274,12 @@ const App: React.FC = () => {
             className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity"
             onClick={handleBackdropClick}
           />
-          <div className="relative w-full max-w-7xl max-h-[95vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="flex-grow overflow-y-auto custom-scrollbar p-6">
-              <ProjectForm
-                masterData={masterData}
-                onComplete={handleCloseModal}
-                initialProject={editingProject || undefined}
-                onClose={handleCloseModal} // Assuming ProjectForm handles its own close button if passed, otherwise we can wrap it
-              />
-            </div>
+          <div className="relative w-full max-w-7xl h-[85vh] sm:h-[90vh] max-h-[95vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
+            <ProjectForm
+              masterData={masterData}
+              onComplete={handleCloseModal}
+              initialProject={editingProject || undefined}
+            />
           </div>
         </div>
       )}

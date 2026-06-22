@@ -142,9 +142,9 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
     const cardKey = `${project.id}-${weekId}`;
     const isExpanded = !!expandedCards[cardKey];
     
-    const summaryThreshold = 90;
-    const issuesThreshold = 75;
-    const nextStepsThreshold = 75;
+    const summaryThreshold = 220;
+    const issuesThreshold = 180;
+    const nextStepsThreshold = 180;
     
     const hasLongText = 
       (update.summary && update.summary.length > summaryThreshold) ||
@@ -182,8 +182,8 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
           {update.summary && renderTextContent(
             update.summary,
             summaryThreshold,
-            <FileText size={10} className="inline mr-1 opacity-50 mb-0.5" />,
-            "text-[10px] text-slate-700 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line"
+            <FileText size={13} className="inline mr-1 opacity-50 mb-0.5" />,
+            "text-[13px] text-slate-700 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-line"
           )}
           
           {(update.issues || update.nextSteps) && (
@@ -191,14 +191,14 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
               {update.issues && renderTextContent(
                 update.issues,
                 issuesThreshold,
-                <AlertCircle size={9} className="inline mr-1 text-rose-500 mb-0.5" />,
-                "text-[9px] text-rose-700 dark:text-rose-400 font-bold leading-snug whitespace-pre-line"
+                <AlertCircle size={12} className="inline mr-1 text-rose-500 mb-0.5" />,
+                "text-[12px] text-rose-700 dark:text-rose-400 font-bold leading-snug whitespace-pre-line"
               )}
               {update.nextSteps && renderTextContent(
                 update.nextSteps,
                 nextStepsThreshold,
-                <CheckCircle2 size={9} className="inline mr-1 text-emerald-500 mb-0.5" />,
-                "text-[9px] text-emerald-700 dark:text-emerald-400 font-bold leading-snug whitespace-pre-line"
+                <CheckCircle2 size={12} className="inline mr-1 text-emerald-500 mb-0.5" />,
+                "text-[12px] text-emerald-700 dark:text-emerald-400 font-bold leading-snug whitespace-pre-line"
               )}
             </div>
           )}

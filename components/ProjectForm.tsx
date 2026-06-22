@@ -245,9 +245,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
   };
 
   return (
-    <div className="relative">
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 glass rounded-3xl p-6 shadow-2xl w-full border border-white/50 dark:border-slate-800">
-        <div className="flex justify-between items-start mb-6">
+    <div className="relative h-full flex flex-col overflow-hidden">
+      <form onSubmit={handleSubmit} className="flex flex-col h-full bg-white dark:bg-slate-900 glass rounded-3xl shadow-2xl w-full border border-white/50 dark:border-slate-800 overflow-hidden">
+        <div className="flex justify-between items-start p-6 pb-4 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
           <div>
             <h3 className="text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {isEditMode ? 'Update project' : 'Create New Project'}
@@ -263,6 +263,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
             </button>
           )}
         </div>
+        
+        <div className="flex-grow overflow-y-auto custom-scrollbar p-6 space-y-6">
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4 mb-8">
           <div className="flex flex-col gap-4">
@@ -559,7 +561,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
           </div>
         </div>
 
-        <div className="flex justify-end items-center gap-4 pt-6 border-t border-slate-100 dark:border-slate-800">
+        </div>
+
+        <div className="flex justify-end items-center gap-4 p-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0 bg-slate-50/50 dark:bg-slate-950/20">
           <button 
             type="button"
             onClick={onComplete}
@@ -582,17 +586,17 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setShowDeleteConfirm(false)} />
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2rem] border border-white/20 shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-rose-500/10">
+          <div className="relative w-full max-w-md max-h-[90vh] bg-white dark:bg-slate-900 rounded-[2rem] border border-white/20 shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200 flex flex-col">
+            <div className="flex-grow overflow-y-auto custom-scrollbar flex flex-col items-center text-center pb-4">
+              <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-rose-500/10 flex-shrink-0">
                 <ShieldCheck size={32} />
               </div>
-              <h4 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Authorize Deletion</h4>
+              <h4 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight flex-shrink-0">Authorize Deletion</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed">
                 This project will be marked as deleted and hidden from the platform. Enter administrative code to proceed.
               </p>
 
-              <div className="w-full mt-8">
+              <div className="w-full mt-8 flex-shrink-0">
                 <input 
                   type="password"
                   placeholder="Enter Code"
@@ -611,22 +615,22 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
                   </p>
                 )}
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4 w-full mt-8">
-                <button 
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-                >
-                  ABORT
-                </button>
-                <button 
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="px-6 py-3 bg-rose-600 dark:bg-rose-500 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-700 dark:hover:bg-rose-400 transition-all active:scale-95"
-                >
-                  {loading ? 'PROCESSING...' : 'CONFIRM DELETE'}
-                </button>
-              </div>
+            <div className="grid grid-cols-2 gap-4 w-full pt-4 border-t border-slate-100 dark:border-slate-800/50 flex-shrink-0">
+              <button 
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+              >
+                ABORT
+              </button>
+              <button 
+                onClick={handleDelete}
+                disabled={loading}
+                className="px-6 py-3 bg-rose-600 dark:bg-rose-500 text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg shadow-rose-500/20 hover:bg-rose-700 dark:hover:bg-rose-400 transition-all active:scale-95"
+              >
+                {loading ? 'PROCESSING...' : 'CONFIRM DELETE'}
+              </button>
             </div>
             
             <button 
