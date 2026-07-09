@@ -572,7 +572,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
                           draggable="true"
                           onDragStart={(e) => handleDragStart(e, win.id)}
                           onDoubleClick={() => handleOpenEdit(win)}
-                          className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-xl shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 cursor-grab active:cursor-grabbing transition-all group duration-200 relative animate-in fade-in duration-100"
+                          className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-xl shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer transition-all group duration-200 relative animate-in fade-in duration-100"
                         >
                           {/* Top: Category & Priority */}
                           <div className="flex justify-between items-start gap-2 mb-1.5">
