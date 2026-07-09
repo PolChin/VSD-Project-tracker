@@ -58,3 +58,19 @@ export interface MasterData {
   departments: string[];
   statuses: StatusMaster[];
 }
+
+export interface QuickWin {
+  id: string;
+  title: string;
+  description: string;
+  assignee: string; // Displayed as "Assignee/Leader"
+  priority: 'High' | 'Medium' | 'Low';
+  dueDate: string; // YYYY-MM-DD
+  requester: string;
+  department: string;
+  status: 'Backlog' | 'In Progress' | 'Review' | 'Done';
+  category: 'On-site Issue Solving' | 'Process Improvement';
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
+}
+

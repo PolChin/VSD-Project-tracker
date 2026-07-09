@@ -28,11 +28,13 @@ import {
   Box,
   Fingerprint,
   Presentation,
-  BarChart2
+  BarChart2,
+  Zap
 } from 'lucide-react';
+import QuickWinsBoard from './components/QuickWinsBoard';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'weekly' | 'portfolio' | 'variance' | 'leaders' | 'dashboard'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'weekly' | 'portfolio' | 'variance' | 'leaders' | 'dashboard' | 'quickwins'>('timeline');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -186,6 +188,7 @@ const App: React.FC = () => {
               {[
                 { id: 'timeline', icon: LayoutDashboard, label: 'Timeline' },
                 { id: 'weekly', icon: Presentation, label: 'Weekly Board' },
+                { id: 'quickwins', icon: Zap, label: 'Quick Wins' },
                 { id: 'portfolio', icon: Layers, label: 'Portfolio' },
                 { id: 'variance', icon: Activity, label: 'Variance' },
                 { id: 'leaders', icon: Users, label: 'Leaders' },
@@ -253,6 +256,7 @@ const App: React.FC = () => {
         )}
         {activeTab === 'variance' && <VarianceUI projects={projects} />}
         {activeTab === 'leaders' && <LeaderAnalytics projects={projects} masterData={masterData} />}
+        {activeTab === 'quickwins' && <QuickWinsBoard masterData={masterData} />}
       </main>
 
       {/* Modals */}
@@ -274,15 +278,12 @@ const App: React.FC = () => {
             className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity"
             onClick={handleBackdropClick}
           />
-          <div className="relative w-full max-w-7xl max-h-[95vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="flex-grow overflow-y-auto custom-scrollbar p-6">
-              <ProjectForm
-                masterData={masterData}
-                onComplete={handleCloseModal}
-                initialProject={editingProject || undefined}
-                onClose={handleCloseModal} // Assuming ProjectForm handles its own close button if passed, otherwise we can wrap it
-              />
-            </div>
+          <div className="relative w-full max-w-7xl h-[85vh] sm:h-[90vh] max-h-[95vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
+            <ProjectForm
+              masterData={masterData}
+              onComplete={handleCloseModal}
+              initialProject={editingProject || undefined}
+            />
           </div>
         </div>
       )}
