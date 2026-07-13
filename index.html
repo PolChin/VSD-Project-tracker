@@ -64,6 +64,18 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        /* Drag over active column highlight */
+        .drag-active {
+            outline: 2px dashed #6366f1 !important;
+            outline-offset: -2px;
+            background: rgba(99, 102, 241, 0.08) !important;
+            border-color: #6366f1 !important;
+        }
+        .dark .drag-active {
+            background: rgba(99, 102, 241, 0.15) !important;
+            border-color: #818cf8 !important;
+        }
+
         /* Scrollbar Styling */
         ::-webkit-scrollbar {
             width: 8px;
