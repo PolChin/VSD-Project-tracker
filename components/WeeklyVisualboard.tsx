@@ -3,6 +3,9 @@ import { db, collection, query, where, getDocs, onSnapshot } from '../firebase';
 import { Project, WeeklyUpdate, MasterData } from '../types';
 import { getCurrentWeekId, getPreviousWeekId, getNextWeekId, weekIdToDateRange } from '../utils/dateUtils';
 import MultiSelectFilter from './MultiSelectFilter';
+import { Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useRouteState } from '../utils/useRouteState';
 import { 
   Presentation, 
   ChevronLeft, 
@@ -26,8 +29,19 @@ interface WeeklyVisualboardProps {
   onUpdateProgress: (project: Project, weekId?: string) => void;
 }
 
+interface WeeklyBoardState {
+  currentWeek: string;
+  searchQuery: string;
+  deptFilter: string[];
+  leaderFilter: string[];
+  statusFilter: string[];
+  visualMode: 'single' | 'triple';
+}
+
 const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterData, onUpdateProgress }) => {
-  const hasInitializedFilter = useRef(false);
+  const location = useLocation();
+  const savedBoardState = (location.state as Record<string, unknown> | null)?.weeklyBoard as WeeklyBoardState | undefined;
+  const hasInitializedFilter = useRef(!!savedBoardState);
 
   const formatUpdateDate = (dateValue: any) => {
     if (!dateValue) return '';
@@ -42,15 +56,24 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
 
   const realCurrentWeek = useMemo(() => getCurrentWeekId(), []);
   const defaultWeek = useMemo(() => realCurrentWeek, [realCurrentWeek]);
-  const [currentWeek, setCurrentWeek] = useState<string>(defaultWeek);
+  const [boardState, setBoardState] = useRouteState<WeeklyBoardState>('weeklyBoard', {
+    currentWeek: defaultWeek,
+    searchQuery: '',
+    deptFilter: ['All'],
+    leaderFilter: ['All'],
+    statusFilter: ['All'],
+    visualMode: 'triple'
+  });
+  const { currentWeek, searchQuery, deptFilter, leaderFilter, statusFilter, visualMode } = boardState;
+  const setCurrentWeek = (value: string) => setBoardState(state => ({ ...state, currentWeek: value }));
+  const setSearchQuery = (value: string) => setBoardState(state => ({ ...state, searchQuery: value }));
+  const setDeptFilter = (value: string[]) => setBoardState(state => ({ ...state, deptFilter: value }));
+  const setLeaderFilter = (value: string[]) => setBoardState(state => ({ ...state, leaderFilter: value }));
+  const setStatusFilter = (value: string[]) => setBoardState(state => ({ ...state, statusFilter: value }));
+  const setVisualMode = (value: 'single' | 'triple') => setBoardState(state => ({ ...state, visualMode: value }));
   const [updates, setUpdates] = useState<Record<string, Record<string, WeeklyUpdate>>>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [deptFilter, setDeptFilter] = useState<string[]>(['All']);
-  const [leaderFilter, setLeaderFilter] = useState<string[]>(['All']);
-  const [statusFilter, setStatusFilter] = useState<string[]>(['All']);
-  const [visualMode, setVisualMode] = useState<'single' | 'triple'>('triple');
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
 
   const displayWeeks = useMemo(() => {
@@ -235,8 +258,8 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
             <Presentation size={24} className="text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Weekly Visualboard</h2>
-            <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">Historical Progress View</p>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Weekly Board</h2>
+            <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">Weekly updates · 1 or 3 weeks</p>
           </div>
         </div>
 
@@ -264,6 +287,7 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
               Single Week
             </button>
           </div>
+          <Link to="/weekly/review" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">Review coverage</Link>
 
           {/* Week Navigation */}
           <div className="flex items-center bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -387,7 +411,7 @@ const WeeklyVisualboard: React.FC<WeeklyVisualboardProps> = ({ projects, masterD
                     <tr key={project.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors align-top">
                       {/* Project Name */}
                       <td className="px-6 py-5">
-                        <h4 className="text-[13px] font-bold text-slate-900 dark:text-white leading-snug whitespace-normal" title={project.name}>{project.name}</h4>
+                        <Link to={`/projects/${encodeURIComponent(project.id)}/updates`} className="block text-[13px] font-bold text-slate-900 dark:text-white leading-snug whitespace-normal hover:text-indigo-600 hover:underline dark:hover:text-indigo-400" title={project.name}>{project.name}</Link>
                         {project.ciNo && (
                           <div className="text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500 mt-1">
                             CI No: {project.ciNo}

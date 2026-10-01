@@ -1,20 +1,9 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# VSD Project Tracker
 
-# Run and deploy your AI Studio app
+## Run locally
 
-This contains everything you need to run your app locally.
+Prerequisites: Node.js and npm.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1eqMeviv4LhIJfd_7V5PWUrlaowcMGpP1
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1. Install dependencies with `npm install`.
+2. Start the development server with `npm run dev`.
+3. Create a production build with `npm run build`.

@@ -104,8 +104,8 @@ const ProgressionChart: React.FC<{ history: ProjectHistory[] }> = ({ history }) 
             <TrendingUp size={18} />
           </div>
           <div>
-            <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">Tactical Progression Map</h4>
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest mt-1">Historical velocity &amp; Operational Momentum</p>
+            <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">Progress Over Time</h4>
+            <p className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest mt-1">Latest update per week and milestones</p>
           </div>
         </div>
         <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 rounded-xl">
@@ -279,11 +279,11 @@ const ProgressionChart: React.FC<{ history: ProjectHistory[] }> = ({ history }) 
 
       <div className="flex justify-between mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
         <div className="flex flex-col">
-          <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Inception</span>
+          <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Start</span>
           <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{new Date(startTime).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
         </div>
         <div className="flex flex-col text-right">
-          <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">Projection Limit</span>
+          <span className="text-[10px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest">End</span>
           <span className="text-xs font-bold text-slate-600 dark:text-slate-300">{new Date(endTime).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
         </div>
       </div>
@@ -395,7 +395,7 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
   const renderComparison = (current: ProjectHistory, previous?: ProjectHistory) => {
     if (!previous) return (
       <div className="p-4 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-center mt-4">
-        <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">Initial Deployment Node</p>
+        <p className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest">First record</p>
       </div>
     );
 
@@ -425,7 +425,7 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 px-1">
             <Activity size={10} className="text-indigo-500" />
-            <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Operational Drift</span>
+            <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Task progress change</span>
           </div>
           {taskChanges.slice(0, 3).map(change => (
             <div key={change.id} className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
@@ -439,7 +439,7 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
         <div className="space-y-2">
           <div className="flex items-center gap-1.5 px-1">
             <Target size={10} className="text-rose-500" />
-            <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Temporal Slippage</span>
+            <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Milestone date change</span>
           </div>
           {milestoneChanges.slice(0, 3).map(change => (
             <div key={change.id} className="flex items-center justify-between p-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800 shadow-sm">
@@ -485,7 +485,7 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 animate-pulse">
           <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4" />
-          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Decoding Snapshot Matrix...</p>
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Loading history...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch w-full max-w-full flex-grow overflow-hidden mb-4">
@@ -496,7 +496,7 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
               <div className="h-[600px] bg-white/80 dark:bg-slate-900/60 glass rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-center p-20 text-center">
                 <div className="opacity-30">
                   <AlertCircle size={48} className="mx-auto mb-4 text-slate-400" />
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Zero Historical Entropy</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">No history yet</p>
                 </div>
               </div>
             )}
@@ -510,8 +510,8 @@ const VarianceUI: React.FC<VarianceUIProps> = ({ projects }) => {
                     <CalendarDays size={18} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-tighter">Snapshot Ledger</h3>
-                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Historical Iteration log</p>
+                    <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-tighter">Change Log</h3>
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Edits and weekly updates</p>
                   </div>
                 </div>
                 <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full font-black text-slate-500 tracking-wider">{history.length} ITEMS</span>

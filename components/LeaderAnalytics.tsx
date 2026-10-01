@@ -133,7 +133,7 @@ const LeaderAnalytics: React.FC<LeaderAnalyticsProps> = ({ projects, masterData 
           <div className="flex-grow flex flex-col items-center justify-center text-center opacity-40 p-8">
             <Users size={64} className="mb-6 text-slate-300" />
             <h3 className="text-xl font-black uppercase tracking-widest text-slate-400">Select a Leader</h3>
-            <p className="text-sm font-bold text-slate-400 mt-2">Choose from the ranking list to view deep-dive intelligence.</p>
+            <p className="text-sm font-bold text-slate-400 mt-2">Choose a leader from the list to see their projects.</p>
           </div>
         ) : (
           <div className="flex flex-col h-full overflow-hidden">
@@ -157,7 +157,7 @@ const LeaderAnalytics: React.FC<LeaderAnalyticsProps> = ({ projects, masterData 
                     <TrendingUp size={20} className="text-white/40" />
                   </div>
                   <div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-indigo-100 flex items-center gap-1.5"><LayoutGrid size={10} /> Nodes Managed</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-indigo-100 flex items-center gap-1.5"><LayoutGrid size={10} /> Projects</span>
                     <div className="text-4xl font-black leading-none mt-2">{leaderStats[selectedLeader]?.totalProjects || 0}</div>
                   </div>
                 </div>
@@ -166,7 +166,7 @@ const LeaderAnalytics: React.FC<LeaderAnalyticsProps> = ({ projects, masterData 
                     <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl text-indigo-600 dark:text-indigo-400"><Target size={20} /></div>
                   </div>
                   <div>
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><Target size={10} /> Portfolio Velocity</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><Target size={10} /> Average Progress</span>
                     <div className="text-4xl font-black leading-none mt-2 text-slate-900 dark:text-white">
                       {leaderStats[selectedLeader]?.avgProgress || 0}<span className="text-lg text-slate-400">%</span>
                     </div>
@@ -194,7 +194,7 @@ const LeaderAnalytics: React.FC<LeaderAnalyticsProps> = ({ projects, masterData 
                       <LayoutGrid size={18} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tighter">Managed Node Distribution</h4>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tighter">Projects</h4>
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mt-1">Active tracking parameters</p>
                     </div>
                  </div>
@@ -268,25 +268,6 @@ const LeaderAnalytics: React.FC<LeaderAnalyticsProps> = ({ projects, masterData 
         )}
       </div>
 
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 5px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-          margin: 15px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 10px;
-        }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #334155;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #94a3b8;
-        }
-      `}</style>
     </div>
   );
 };

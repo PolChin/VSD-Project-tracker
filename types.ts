@@ -74,5 +74,7 @@ export interface QuickWin {
   updatedAt: string; // ISO timestamp
   valueRelease?: number; // Value Release in Baht
   manpowerSaving?: number; // Manpower Saving in Hr./year
+  isDeleted?: boolean;
+  deletedAt?: string;
 }
 

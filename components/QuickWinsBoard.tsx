@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db, collection, query, orderBy, onSnapshot, doc, setDoc, updateDoc, deleteDoc } from '../firebase';
+import { db, collection, query, orderBy, onSnapshot, doc, setDoc, updateDoc, serverTimestamp } from '../firebase';
 import { QuickWin, MasterData } from '../types';
+import { toLocalDateInputValue } from '../utils/dateUtils';
+import { EmptyState, PageHeader, ProgressBar, Skeleton, StatusBadge, Toast } from './ui';
+import { useRouteState } from '../utils/useRouteState';
 import {
   Plus,
   Search,
@@ -27,19 +30,35 @@ interface QuickWinsBoardProps {
   masterData: MasterData;
 }
 
+interface QuickWinsViewState {
+  searchTerm: string;
+  filterPriority: string;
+  filterCategory: string;
+  filterDepartment: string;
+  filterAssignee: string;
+  dueDateStart: string;
+  dueDateEnd: string;
+  viewMode: 'kanban' | 'table';
+}
+
 const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
   const [quickWins, setQuickWins] = useState<QuickWin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState<{ tone: 'success' | 'error' | 'info'; message: string } | null>(null);
 
-  // Filters & Views
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterPriority, setFilterPriority] = useState<string>('All');
-  const [filterCategory, setFilterCategory] = useState<string>('All');
-  const [filterDepartment, setFilterDepartment] = useState<string>('All');
-  const [filterAssignee, setFilterAssignee] = useState<string>('All');
-  const [dueDateStart, setDueDateStart] = useState<string>('');
-  const [dueDateEnd, setDueDateEnd] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
+  const [viewState, setViewState] = useRouteState<QuickWinsViewState>('quickWins', {
+    searchTerm: '', filterPriority: 'All', filterCategory: 'All', filterDepartment: 'All',
+    filterAssignee: 'All', dueDateStart: '', dueDateEnd: '', viewMode: 'kanban'
+  });
+  const { searchTerm, filterPriority, filterCategory, filterDepartment, filterAssignee, dueDateStart, dueDateEnd, viewMode } = viewState;
+  const setSearchTerm = (value: string) => setViewState(state => ({ ...state, searchTerm: value }));
+  const setFilterPriority = (value: string) => setViewState(state => ({ ...state, filterPriority: value }));
+  const setFilterCategory = (value: string) => setViewState(state => ({ ...state, filterCategory: value }));
+  const setFilterDepartment = (value: string) => setViewState(state => ({ ...state, filterDepartment: value }));
+  const setFilterAssignee = (value: string) => setViewState(state => ({ ...state, filterAssignee: value }));
+  const setDueDateStart = (value: string) => setViewState(state => ({ ...state, dueDateStart: value }));
+  const setDueDateEnd = (value: string) => setViewState(state => ({ ...state, dueDateEnd: value }));
+  const setViewMode = (value: 'kanban' | 'table') => setViewState(state => ({ ...state, viewMode: value }));
 
   // Modals & Forms
   const [showFormModal, setShowFormModal] = useState(false);
@@ -72,12 +91,26 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const wins: QuickWin[] = [];
       snapshot.forEach((doc) => {
-        wins.push({ id: doc.id, ...doc.data() } as QuickWin);
+        const data = doc.data();
+        const toIsoString = (value: any) => typeof value?.toDate === 'function'
+          ? value.toDate().toISOString()
+          : value instanceof Date
+            ? value.toISOString()
+            : String(value || '');
+        if (!data.isDeleted) {
+          wins.push({
+            id: doc.id,
+            ...data,
+            createdAt: toIsoString(data.createdAt),
+            updatedAt: toIsoString(data.updatedAt)
+          } as QuickWin);
+        }
       });
       setQuickWins(wins);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching quick wins from Firestore:", error);
+      setNotice({ tone: 'error', message: 'Quick Wins could not be loaded.' });
       setLoading(false);
     });
     return () => unsubscribe();
@@ -174,10 +207,11 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
         const docRef = doc(db, 'quick_wins', winId);
         await updateDoc(docRef, {
           status: targetStatus,
-          updatedAt: new Date().toISOString()
+          updatedAt: serverTimestamp()
         });
       } catch (err) {
         console.error("Error updating quick win status in Firestore:", err);
+        setNotice({ tone: 'error', message: 'Quick Win status could not be updated.' });
       }
     }
   };
@@ -266,6 +300,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
       return;
     }
 
+    const timestamp = serverTimestamp();
     const payload = {
       title: title.trim(),
       description: description.trim(),
@@ -278,7 +313,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
       category,
       valueRelease: valueRelease.trim() !== '' ? parseFloat(valueRelease) : null,
       manpowerSaving: manpowerSaving.trim() !== '' ? parseFloat(manpowerSaving) : null,
-      updatedAt: new Date().toISOString()
+      updatedAt: timestamp
     };
 
     try {
@@ -291,22 +326,30 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
         const newDocRef = doc(collection(db, 'quick_wins'));
         await setDoc(newDocRef, {
           ...payload,
-          createdAt: new Date().toISOString()
+          createdAt: timestamp
         });
       }
       setShowFormModal(false);
+      setNotice({ tone: 'success', message: editingQuickWin ? 'Quick Win updated.' : 'Quick Win added.' });
     } catch (err) {
       console.error("Error saving quick win to Firestore:", err);
+      setNotice({ tone: 'error', message: 'Quick Win could not be saved.' });
     }
   };
 
   // Delete Action
   const handleDelete = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'quick_wins', id));
+      await updateDoc(doc(db, 'quick_wins', id), {
+        isDeleted: true,
+        deletedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
       setShowDoubleDeleteConfirmId(null);
+      setNotice({ tone: 'success', message: 'Quick Win moved to deleted items.' });
     } catch (err) {
       console.error("Error deleting quick win from Firestore:", err);
+      setNotice({ tone: 'error', message: 'Quick Win could not be deleted.' });
     }
   };
 
@@ -322,26 +365,33 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
     }
   };
 
+  const getStatusColor = (value: QuickWin['status']) => ({
+    'Backlog': '#64748b',
+    'In Progress': '#4f46e5',
+    'Review': '#d97706',
+    'Done': '#059669'
+  })[value];
+
   const isOverdue = (dateStr: string | null | undefined, currentStatus: string) => {
     if (!dateStr || currentStatus === 'Done') return false;
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateInputValue();
     return dateStr < today;
   };
 
+  const statItems = [
+    { icon: CheckSquare, label: 'Active wins', value: stats.active, tone: 'text-indigo-600 dark:text-indigo-400' },
+    { icon: AlertCircle, label: 'On-site solved', value: stats.problemSolvingSolved, tone: 'text-rose-600 dark:text-rose-400' },
+    { icon: Sparkles, label: 'Process improved', value: stats.processImproved, tone: 'text-emerald-600 dark:text-emerald-400' },
+    { icon: TrendingUp, label: 'Completion rate', value: `${stats.completionRate}%`, tone: 'text-amber-700 dark:text-amber-400' }
+  ];
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden h-full">
+      {notice && <Toast tone={notice.tone} message={notice.message} onDismiss={() => setNotice(null)} />}
       {/* Top Header & Stats */}
-      <div className="flex-shrink-0 p-4 border-b border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 backdrop-blur-md">
+      <div className="flex-shrink-0 border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
-              <Zap className="h-5 w-5 text-indigo-500 animate-pulse" />
-              Quick Wins & Frontline Projects
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Lightweight task tracking, immediate problem-solving, and continuous process improvements.
-            </p>
-          </div>
+          <PageHeader icon={Zap} title="Quick Wins" description="Frontline improvements and small projects" />
 
           <button
             onClick={handleOpenCreate}
@@ -353,54 +403,17 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
         </div>
 
         {/* Stats Summary Panel */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="glass p-3 rounded-xl flex items-center gap-3">
-            <div className="p-2 bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg">
-              <CheckSquare size={18} />
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">Active Wins</span>
-              <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.active}</p>
-            </div>
-          </div>
-
-          <div className="glass p-3 rounded-xl flex items-center gap-3">
-            <div className="p-2 bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-lg">
-              <AlertCircle size={18} />
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 font-sans">On-site Solved</span>
-              <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.problemSolvingSolved}</p>
-            </div>
-          </div>
-
-          <div className="glass p-3 rounded-xl flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg">
-              <Sparkles size={18} />
-            </div>
-            <div>
-              <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">Process Improved</span>
-              <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.processImproved}</p>
-            </div>
-          </div>
-
-          <div className="glass p-3 rounded-xl flex items-center gap-3">
-            <div className="p-2 bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg">
-              <TrendingUp size={18} />
-            </div>
-            <div className="flex-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">Completion Rate</span>
-              <div className="flex items-center gap-2">
-                <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{stats.completionRate}%</p>
-                <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-500 dark:bg-indigo-400 transition-all duration-500"
-                    style={{ width: `${stats.completionRate}%` }}
-                  />
-                </div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-200 pt-3 dark:border-slate-800 lg:grid-cols-4">
+          {statItems.map(({ icon: Icon, label, value, tone }) => (
+            <div key={label} className="flex min-w-0 items-center gap-2 px-3 py-2">
+              <Icon size={17} className={`flex-shrink-0 ${tone}`} />
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-semibold uppercase text-slate-500">{label}</p>
+                <p className="text-lg font-bold text-slate-900 dark:text-white">{value}</p>
+                {label === 'Completion rate' && <ProgressBar value={stats.completionRate} color="#d97706" className="mt-1 h-1.5" />}
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -475,7 +488,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
               onChange={(e) => setDueDateStart(e.target.value)}
               className="bg-transparent text-xs outline-none focus:ring-0 max-w-[105px] border-none p-0 text-slate-700 dark:text-slate-300"
             />
-            <span className="text-slate-300 dark:text-slate-850 font-bold">-</span>
+            <span className="text-slate-300 dark:text-slate-800 font-bold">-</span>
             <input
               type="date"
               value={dueDateEnd}
@@ -516,22 +529,24 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
       {/* Main Board Area */}
       <div className="flex-1 overflow-auto p-4 bg-slate-50/50 dark:bg-slate-950/20">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[0, 1, 2, 3].map(column => (
+              <div key={column} className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <Skeleton className="h-5 w-28" />
+                {[0, 1, 2].map(card => (
+                  <div key={card} className="space-y-3 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         ) : filteredQuickWins.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center p-6">
-            <HelpCircle size={40} className="text-slate-300 dark:text-slate-700 mb-2 animate-bounce" />
-            <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No Quick Wins found</h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Add your first small project, frontline troubleshoot task, or process improvement issue.
-            </p>
-            <button
-              onClick={handleOpenCreate}
-              className="mt-4 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all"
-            >
-              Add Project
-            </button>
+          <div className="flex h-full flex-col items-center justify-center">
+            <EmptyState icon={HelpCircle} title="No Quick Wins found" description="Try changing your search or filters." />
+            <button onClick={handleOpenCreate} className="-mt-12 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700">Add Quick Win</button>
           </div>
         ) : viewMode === 'kanban' ? (
           /* ========================================================
@@ -559,7 +574,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
                   onDragEnter={handleDragEnter}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, colStatus)}
-                  className="flex flex-col max-h-full rounded-2xl glass p-3 border-t-4 border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-200"
+                  className="flex max-h-full flex-col rounded-lg border border-slate-200 bg-slate-50 p-3 transition-colors dark:border-slate-800 dark:bg-slate-900/60"
                 >
                   {/* Column Header */}
                   <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-200/50 dark:border-slate-800/50 flex-shrink-0">
@@ -583,7 +598,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
                           draggable="true"
                           onDragStart={(e) => handleDragStart(e, win.id)}
                           onDoubleClick={() => handleOpenEdit(win)}
-                          className="p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-xl shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer transition-all group duration-200 relative animate-in fade-in duration-100"
+                          className="relative cursor-pointer rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700 group"
                         >
                           {/* Top: Category & Priority */}
                           <div className="flex justify-between items-start gap-2 mb-1.5">
@@ -626,14 +641,14 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
                           {/* Financial / Manpower metrics */}
                           {((win.valueRelease !== undefined && win.valueRelease !== null) || 
                             (win.manpowerSaving !== undefined && win.manpowerSaving !== null)) && (
-                            <div className="mt-2 flex items-center justify-between text-[10px] text-slate-550 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/30 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800/30">
+                            <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/30 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-800/30">
                               {win.valueRelease !== undefined && win.valueRelease !== null ? (
                                 <span className="font-semibold text-slate-700 dark:text-slate-300">
                                   ฿{Number(win.valueRelease).toLocaleString()}
                                 </span>
                               ) : <span />}
                               {win.manpowerSaving !== undefined && win.manpowerSaving !== null ? (
-                                <span className="font-semibold text-indigo-650 dark:text-indigo-400">
+                                <span className="font-semibold text-indigo-600 dark:text-indigo-400">
                                   {Number(win.manpowerSaving).toLocaleString()} Hr/yr
                                 </span>
                               ) : <span />}
@@ -730,11 +745,11 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
           /* ========================================================
              TABLE/LIST VIEW
              ======================================================== */
-          <div className="glass rounded-2xl overflow-hidden shadow-md">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-100/50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 text-xs font-bold border-b border-slate-200 dark:border-slate-850">
+                  <tr className="bg-slate-100/50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 text-xs font-bold border-b border-slate-200 dark:border-slate-800">
                     <th className="p-3">Status</th>
                     <th className="p-3">Category</th>
                     <th className="p-3">Title</th>
@@ -761,10 +776,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
                       <tr key={win.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/20 text-slate-700 dark:text-slate-300 transition-colors">
                         {/* Status */}
                         <td className="p-3">
-                          <span className="inline-flex items-center gap-1.5 font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px]">
-                            <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`} />
-                            {win.status}
-                          </span>
+                          <StatusBadge label={win.status} color={getStatusColor(win.status)} />
                         </td>
 
                         {/* Category */}
@@ -814,7 +826,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
                         </td>
 
                         {/* Manpower Saving */}
-                        <td className="p-3 font-semibold text-indigo-650 dark:text-indigo-400">
+                        <td className="p-3 font-semibold text-indigo-600 dark:text-indigo-400">
                           {win.manpowerSaving !== undefined && win.manpowerSaving !== null
                             ? `${Number(win.manpowerSaving).toLocaleString()}`
                             : '-'}
@@ -849,7 +861,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
                           {/* Delete modal overlay for Table Row */}
                           {showDeleteConfirmId === win.id && (
                             <div className="fixed inset-0 bg-slate-950/20 dark:bg-slate-950/40 backdrop-blur-[2px] z-50 flex items-center justify-center">
-                              <div className="glass p-4 rounded-2xl max-w-xs w-full text-center shadow-lg animate-in zoom-in-95 duration-205">
+                              <div className="glass p-4 rounded-2xl max-w-xs w-full text-center shadow-lg animate-in zoom-in-95 duration-200">
                                 <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-3">
                                   Delete this Quick Win?
                                 </p>
@@ -960,7 +972,7 @@ const QuickWinsBoard: React.FC<QuickWinsBoardProps> = ({ masterData }) => {
                         setStatus(e.target.value as any);
                         if (errors.status) setErrors(prev => { const n = {...prev}; delete n.status; return n; });
                       }}
-                      className={`w-full bg-slate-50 dark:bg-slate-950 border ${errors.status ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-800'} text-slate-850 dark:text-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer`}
+                      className={`w-full bg-slate-50 dark:bg-slate-950 border ${errors.status ? 'border-rose-500 bg-rose-50 dark:bg-rose-900/20' : 'border-slate-200 dark:border-slate-800'} text-slate-800 dark:text-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer`}
                     >
                       <option value="">Select Status</option>
                       <option value="Backlog">Backlog</option>

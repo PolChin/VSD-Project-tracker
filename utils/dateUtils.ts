@@ -7,6 +7,36 @@
 /**
  * Get the start (Sunday) of the week for a given date.
  */
+export const toLocalDateInputValue = (date: Date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Firestore values may be Timestamp (new writes), Date, or ISO string (legacy writes).
+export const toIsoString = (value: unknown): string => {
+  if (value instanceof Date) return value.toISOString();
+  if (value && typeof (value as { toDate?: unknown }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate().toISOString();
+  }
+  return typeof value === 'string' ? value : '';
+};
+
+export const formatDateOnly = (value?: string): string => {
+  if (!value) return '—';
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+export const formatDateTime = (iso?: string): string => {
+  if (!iso) return '—';
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '—';
+  return date.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
 export const getWeekStart = (date: Date): Date => {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const day = d.getDay(); // 0 = Sunday

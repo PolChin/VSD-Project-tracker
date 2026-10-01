@@ -1,23 +1,27 @@
 
-import React, { useState } from 'react';
-import { db, collection, doc, writeBatch, query, orderBy, limit, getDocs } from '../firebase';
+import React, { useEffect, useRef, useState } from 'react';
+import { db, collection, doc, writeBatch, query, orderBy, limit, getDocs, where, documentId, runTransaction, serverTimestamp } from '../firebase';
 import { Project, MasterData, Task, Milestone } from '../types';
 import { Plus, Trash2, Save, Activity, FileText, Calendar, Flag, AlertCircle, CheckCircle2, ShieldCheck, X } from 'lucide-react';
+import { toLocalDateInputValue } from '../utils/dateUtils';
+import ConfirmDialog from './ConfirmDialog';
 
 interface ProjectFormProps {
   masterData: MasterData;
   onComplete: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   initialProject?: Project;
 }
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initialProject }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, onDirtyChange, initialProject }) => {
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
 
-  // SECURE DELETE PASSWORD
   const SECRET_DELETE_CODE = "VSD2025";
 
   const sanitizeTasks = (tasks?: Task[]): Task[] => {
@@ -54,8 +58,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
     milestones: sanitizeMilestones(initialProject?.milestones),
     ciNo: initialProject?.ciNo || ''
   });
+  const initialFormData = useRef(JSON.stringify(formData));
+  const hasUnsavedChanges = JSON.stringify(formData) !== initialFormData.current;
+
+  useEffect(() => {
+    onDirtyChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyChange]);
 
   const isEditMode = !!initialProject;
+
+  const requestClose = () => {
+    if (hasUnsavedChanges) setShowUnsavedConfirm(true);
+    else onComplete();
+  };
 
 
   const handleAddTask = () => {
@@ -63,8 +78,8 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       id: Math.random().toString(36).substr(2, 9),
       name: '',
       description: '',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      startDate: toLocalDateInputValue(),
+      endDate: toLocalDateInputValue(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)),
       progress: 0
     };
     setFormData(prev => ({ ...prev, tasks: [...prev.tasks, newTask] }));
@@ -87,7 +102,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       id: Math.random().toString(36).substr(2, 9),
       name: '',
       description: '',
-      date: new Date().toISOString().split('T')[0],
+      date: toLocalDateInputValue(),
       completed: false
     };
     setFormData(prev => ({ ...prev, milestones: [...prev.milestones, newMilestone] }));
@@ -115,33 +130,43 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
     return Object.keys(newErrors).length === 0;
   };
 
-  const generateNextProjectId = async () => {
+  const reserveNextProjectRef = async () => {
     const currentYear = new Date().getFullYear().toString();
     const prefix = `P${currentYear}`;
-    
     const projectsRef = collection(db, 'projects');
     const q = query(
       projectsRef,
-      orderBy('__name__', 'desc'),
-      limit(20)
+      where(documentId(), '>=', prefix),
+      where(documentId(), '<', `${prefix}\uf8ff`),
+      orderBy(documentId(), 'desc'),
+      limit(1)
     );
-
     const querySnapshot = await getDocs(q);
-    const lastProjectInYear = querySnapshot.docs.find(doc => doc.id.startsWith(prefix));
-    
-    if (!lastProjectInYear) {
-      return `${prefix}001`;
-    } else {
-      const lastId = lastProjectInYear.id;
-      const lastSequenceStr = lastId.substring(prefix.length);
-      const lastSequence = parseInt(lastSequenceStr, 10);
-      const nextSequence = isNaN(lastSequence) ? 1 : lastSequence + 1;
-      return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
-    }
+    const lastId = querySnapshot.docs[0]?.id || '';
+    const lastSequence = Number.parseInt(lastId.slice(prefix.length), 10) || 0;
+    const counterRef = doc(db, 'project_counters', currentYear);
+
+    return runTransaction(db, async transaction => {
+      const counterSnapshot = await transaction.get(counterRef);
+      let sequence = Math.max(lastSequence, Number(counterSnapshot.data()?.sequence || 0));
+      let candidateRef = doc(db, 'projects', `${prefix}${String(sequence + 1).padStart(3, '0')}`);
+      let candidateSnapshot = await transaction.get(candidateRef);
+
+      while (candidateSnapshot.exists()) {
+        sequence += 1;
+        candidateRef = doc(db, 'projects', `${prefix}${String(sequence + 1).padStart(3, '0')}`);
+        candidateSnapshot = await transaction.get(candidateRef);
+      }
+
+      sequence = Number(candidateRef.id.slice(prefix.length));
+      transaction.set(counterRef, { sequence }, { merge: true });
+      return candidateRef;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
     
     if (!validate()) return;
     
@@ -151,12 +176,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       if (isEditMode) {
         projectRef = doc(db, 'projects', initialProject!.id);
       } else {
-        const nextId = await generateNextProjectId();
-        projectRef = doc(db, 'projects', nextId);
+        projectRef = await reserveNextProjectRef();
       }
         
       const batch = writeBatch(db);
-      const timestampStr = new Date().toISOString();
+      const timestamp = serverTimestamp();
       
       const documentData = {
         name: String(formData.name),
@@ -167,19 +191,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
         progress: Number(formData.progress),
         tasks: sanitizeTasks(formData.tasks),
         milestones: sanitizeMilestones(formData.milestones),
-        updatedAt: timestampStr,
+        updatedAt: timestamp,
         ciNo: String(formData.ciNo || '')
       };
 
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = (now.getMonth() + 1).toString().padStart(2, '0');
-      const dd = now.getDate().toString().padStart(2, '0');
-      const hh = now.getHours().toString().padStart(2, '0');
-      const min = now.getMinutes().toString().padStart(2, '0');
-      
-      const historyDocId = `${projectRef.id}_${yyyy}${mm}${dd}_${hh}${min}`;
-      const historyRef = doc(db, 'projects_history', historyDocId);
+      const historyRef = doc(collection(db, 'projects_history'));
 
       batch.set(projectRef, documentData, { merge: true });
       batch.set(historyRef, {
@@ -191,7 +207,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       onComplete();
     } catch (err: any) {
       console.error("Save error:", err?.message || "Internal Error");
-      alert("Failed to save project. " + (err?.message || "Check console for details."));
+      setFormError("Failed to save project. " + (err?.message || "Check console for details."));
     } finally {
       setLoading(false);
     }
@@ -207,26 +223,18 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
     try {
       const projectRef = doc(db, 'projects', initialProject!.id);
       const batch = writeBatch(db);
-      const timestampStr = new Date().toISOString();
+      const timestamp = serverTimestamp();
       
       // Update status to 'Mark deleted'
       const documentData = {
         ...formData,
         status: 'Mark deleted',
-        updatedAt: timestampStr
+        updatedAt: timestamp
       };
 
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = (now.getMonth() + 1).toString().padStart(2, '0');
-      const dd = now.getDate().toString().padStart(2, '0');
-      const hh = now.getHours().toString().padStart(2, '0');
-      const min = now.getMinutes().toString().padStart(2, '0');
-      
-      const historyDocId = `${projectRef.id}_DELETE_${yyyy}${mm}${dd}_${hh}${min}`;
-      const historyRef = doc(db, 'projects_history', historyDocId);
+      const historyRef = doc(collection(db, 'projects_history'));
 
-      batch.set(projectRef, { status: 'Mark deleted', updatedAt: timestampStr }, { merge: true });
+      batch.set(projectRef, { status: 'Mark deleted', updatedAt: timestamp }, { merge: true });
       batch.set(historyRef, {
         ...documentData,
         projectId: projectRef.id,
@@ -237,7 +245,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
       onComplete();
     } catch (err: any) {
       console.error("Delete error:", err?.message || "Internal Error");
-      alert("Failed to delete project.");
+      setFormError("Failed to delete project.");
     } finally {
       setLoading(false);
       setShowDeleteConfirm(false);
@@ -563,10 +571,11 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
 
         </div>
 
+        {formError && <p role="alert" className="mx-6 mt-3 text-sm text-rose-600 dark:text-rose-400">{formError}</p>}
         <div className="flex justify-end items-center gap-4 p-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0 bg-slate-50/50 dark:bg-slate-950/20">
           <button 
             type="button"
-            onClick={onComplete}
+            onClick={requestClose}
             className="px-8 py-2.5 rounded-xl font-black text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-[10px] uppercase tracking-widest transition-all"
           >
             CANCEL
@@ -576,7 +585,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
             disabled={loading}
             className="px-12 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-xl font-black shadow-xl hover:bg-indigo-700 dark:hover:bg-indigo-400 transition-all flex items-center gap-2 disabled:opacity-50 text-[10px] uppercase tracking-[0.1em]"
           >
-            {loading ? 'SYNCING...' : isEditMode ? 'SAVE CHANGES' : 'SUBMIT'}
+            {loading ? 'SAVING...' : isEditMode ? 'SAVE CHANGES' : 'CREATE PROJECT'}
             {!loading && <Save size={16} />}
           </button>
         </div>
@@ -591,9 +600,9 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
               <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-rose-500/10 flex-shrink-0">
                 <ShieldCheck size={32} />
               </div>
-              <h4 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight flex-shrink-0">Authorize Deletion</h4>
+              <h4 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight flex-shrink-0">Delete Project</h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-2 leading-relaxed">
-                This project will be marked as deleted and hidden from the platform. Enter administrative code to proceed.
+                This project will be hidden from all views. Its history is kept. Enter the admin code to continue.
               </p>
 
               <div className="w-full mt-8 flex-shrink-0">
@@ -622,7 +631,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
                 onClick={() => setShowDeleteConfirm(false)}
                 className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
               >
-                ABORT
+                CANCEL
               </button>
               <button 
                 onClick={handleDelete}
@@ -641,6 +650,15 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ masterData, onComplete, initi
             </button>
           </div>
         </div>
+      )}
+      {showUnsavedConfirm && (
+        <ConfirmDialog
+          title="Discard unsaved changes?"
+          message="Your project edits will be lost if you close this form."
+          confirmLabel="Discard changes"
+          onCancel={() => setShowUnsavedConfirm(false)}
+          onConfirm={onComplete}
+        />
       )}
     </div>
   );

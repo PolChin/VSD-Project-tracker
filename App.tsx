@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   db,
   collection,
@@ -12,11 +13,13 @@ import LoadingScreen from './components/LoadingScreen';
 import GanttDashboard from './components/GanttDashboard';
 import ProjectList from './components/ProjectList';
 import ProjectForm from './components/ProjectForm';
+import ConfirmDialog from './components/ConfirmDialog';
 import ProgressUpdateModal from './components/ProgressUpdateModal';
 import VarianceUI from './components/VarianceUI';
-import LeaderAnalytics from './components/LeaderAnalytics';
+import TeamWorkload from './components/TeamWorkload';
 import WeeklyVisualboard from './components/WeeklyVisualboard';
-import DashboardReport from './components/DashboardReport';
+import OverviewDashboard from './components/OverviewDashboard';
+import WeeklyReview from './components/WeeklyReview';
 import {
   LayoutDashboard,
   Layers,
@@ -32,14 +35,28 @@ import {
   Zap
 } from 'lucide-react';
 import QuickWinsBoard from './components/QuickWinsBoard';
+import ProjectDetail, { ProjectDetailTab, projectDetailTabs } from './components/ProjectDetail';
+
+type TabId = 'timeline' | 'weekly' | 'portfolio' | 'variance' | 'leaders' | 'dashboard' | 'quickwins';
+const tabIds: TabId[] = ['timeline', 'weekly', 'portfolio', 'variance', 'leaders', 'dashboard', 'quickwins'];
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'timeline' | 'weekly' | 'portfolio' | 'variance' | 'leaders' | 'dashboard' | 'quickwins'>('timeline');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const segments = location.pathname.split('/').filter(Boolean);
+  const detailProjectId = segments[0] === 'projects' && segments[1] ? decodeURIComponent(segments[1]) : null;
+  const legacyReviewRoute = segments[0] === 'review';
+  const weeklyView = segments[0] === 'weekly' && segments[1] === 'review' ? 'review' : 'board';
+  const detailTab: ProjectDetailTab = projectDetailTabs.find(item => item.id === segments[2])?.id || 'overview';
+  const requestedTab = segments[0] as TabId;
+  const activeTab = detailProjectId ? 'portfolio' : legacyReviewRoute ? 'weekly' : tabIds.includes(requestedTab) ? requestedTab : 'timeline';
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [hasUnsavedProjectChanges, setHasUnsavedProjectChanges] = useState(false);
+  const [showDiscardProjectConfirm, setShowDiscardProjectConfirm] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [progressUpdateProject, setProgressUpdateProject] = useState<{ project: Project, weekId?: string } | null>(null);
+  const [progressUpdateProject, setProgressUpdateProject] = useState<{ project: Project, weekId?: string, returnPath?: string } | null>(null);
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('theme') === 'dark' ||
       (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -49,6 +66,11 @@ const App: React.FC = () => {
     departments: [],
     statuses: []
   });
+
+  useEffect(() => {
+    if (legacyReviewRoute) navigate('/weekly/review', { replace: true });
+    else if (!detailProjectId && !tabIds.includes(requestedTab)) navigate('/timeline', { replace: true });
+  }, [navigate, requestedTab, detailProjectId, legacyReviewRoute]);
 
   useEffect(() => {
     if (isDark) {
@@ -144,21 +166,31 @@ const App: React.FC = () => {
   const handleCloseModal = () => {
     setShowAddModal(false);
     setEditingProject(null);
+    setHasUnsavedProjectChanges(false);
+    setShowDiscardProjectConfirm(false);
   };
 
   const handleBackdropClick = () => {
-    if (window.confirm("You have unsaved changes. Are you sure you want to close this window?\n\n(Click OK to exit without saving, or Cancel to continue editing.)")) {
-      handleCloseModal();
-    }
+    if (hasUnsavedProjectChanges) setShowDiscardProjectConfirm(true);
+    else handleCloseModal();
   };
 
   const handleEditProject = (project: Project) => {
     setEditingProject(project);
   };
 
-  if (loading) return <LoadingScreen message="Initializing Workspace..." />;
+  if (loading) return <LoadingScreen message="Loading projects..." />;
 
   const isModalOpen = showAddModal || editingProject !== null;
+  const navigationTabs: { id: TabId; icon: typeof LayoutDashboard; label: string }[] = [
+    { id: 'timeline', icon: LayoutDashboard, label: 'Timeline' },
+    { id: 'weekly', icon: Presentation, label: 'Weekly' },
+    { id: 'quickwins', icon: Zap, label: 'Quick Wins' },
+    { id: 'portfolio', icon: Layers, label: 'Portfolio' },
+    { id: 'variance', icon: Activity, label: 'Variance' },
+    { id: 'leaders', icon: Users, label: 'Team Workload' },
+    { id: 'dashboard', icon: BarChart2, label: 'Overview' }
+  ];
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-500/30 transition-colors duration-300">
@@ -185,18 +217,10 @@ const App: React.FC = () => {
 
             {/* Desktop Navigation Tabs */}
             <div className="hidden md:flex items-center space-x-1 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl">
-              {[
-                { id: 'timeline', icon: LayoutDashboard, label: 'Timeline' },
-                { id: 'weekly', icon: Presentation, label: 'Weekly Board' },
-                { id: 'quickwins', icon: Zap, label: 'Quick Wins' },
-                { id: 'portfolio', icon: Layers, label: 'Portfolio' },
-                { id: 'variance', icon: Activity, label: 'Variance' },
-                { id: 'leaders', icon: Users, label: 'Leaders' },
-                { id: 'dashboard', icon: BarChart2, label: 'Dashboard' }
-              ].map((tab) => (
+              {navigationTabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => navigate(`/${tab.id}`)}
                   className={`
                     flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 ease-out
                     ${activeTab === tab.id
@@ -231,21 +255,39 @@ const App: React.FC = () => {
             </div>
 
           </div>
+          <div className="custom-scrollbar flex gap-1 overflow-x-auto border-t border-slate-200 px-2 py-2 md:hidden dark:border-slate-800" aria-label="Main navigation">
+            {navigationTabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => navigate(`/${tab.id}`)}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
+                className={`flex flex-shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold ${activeTab === tab.id ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-300'}`}
+              >
+                <tab.icon size={15} />{tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </nav>
 
       {/* Main Content Area */}
       <main className="flex-grow w-full px-4 sm:px-6 lg:px-8 py-6 h-0 flex flex-col animate-in fade-in duration-500 ease-out overflow-hidden">
-        {activeTab === 'dashboard' && <DashboardReport projects={projects} masterData={masterData} />}
-        {activeTab === 'timeline' && <GanttDashboard projects={projects} masterData={masterData} />}
-        {activeTab === 'weekly' && (
+        {activeTab === 'dashboard' && <OverviewDashboard projects={projects} masterData={masterData} />}
+        {activeTab === 'timeline' && <GanttDashboard projects={projects} masterData={masterData} onOpenProject={project => navigate(`/projects/${encodeURIComponent(project.id)}`)} />}
+        {activeTab === 'weekly' && (weeklyView === 'review' ? (
+          <WeeklyReview
+            projects={projects}
+            masterData={masterData}
+            onUpdateProgress={(project, weekId) => setProgressUpdateProject({ project, weekId, returnPath: '/weekly/review' })}
+          />
+        ) : (
           <WeeklyVisualboard
             projects={projects}
             masterData={masterData}
-            onUpdateProgress={(project, weekId) => setProgressUpdateProject({ project, weekId })}
+            onUpdateProgress={(project, weekId) => setProgressUpdateProject({ project, weekId, returnPath: '/weekly' })}
           />
-        )}
-        {activeTab === 'portfolio' && (
+        ))}
+        {activeTab === 'portfolio' && !detailProjectId && (
           <ProjectList
             projects={projects}
             masterData={masterData}
@@ -255,8 +297,18 @@ const App: React.FC = () => {
           />
         )}
         {activeTab === 'variance' && <VarianceUI projects={projects} />}
-        {activeTab === 'leaders' && <LeaderAnalytics projects={projects} masterData={masterData} />}
+        {activeTab === 'leaders' && <TeamWorkload projects={projects} masterData={masterData} />}
         {activeTab === 'quickwins' && <QuickWinsBoard masterData={masterData} />}
+        {detailProjectId && (
+          <ProjectDetail
+            projectId={detailProjectId}
+            project={projects.find(project => project.id === detailProjectId)}
+            tab={detailTab}
+            masterData={masterData}
+            onEdit={handleEditProject}
+            onUpdateProgress={(project, weekId) => setProgressUpdateProject({ project, weekId })}
+          />
+        )}
       </main>
 
       {/* Modals */}
@@ -268,7 +320,7 @@ const App: React.FC = () => {
           onClose={() => setProgressUpdateProject(null)}
           onSuccess={() => {
             setProgressUpdateProject(null);
-            setActiveTab('weekly');
+            if (!detailProjectId) navigate(progressUpdateProject.returnPath || '/weekly');
           }}
         />
       )}
@@ -280,12 +332,23 @@ const App: React.FC = () => {
           />
           <div className="relative w-full max-w-7xl h-[85vh] sm:h-[90vh] max-h-[95vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 flex flex-col animate-in zoom-in-95 duration-200">
             <ProjectForm
+              key={editingProject?.id || 'new'}
               masterData={masterData}
               onComplete={handleCloseModal}
+              onDirtyChange={setHasUnsavedProjectChanges}
               initialProject={editingProject || undefined}
             />
           </div>
         </div>
+      )}
+      {showDiscardProjectConfirm && (
+        <ConfirmDialog
+          title="Discard unsaved changes?"
+          message="Your project edits will be lost if you close this form."
+          confirmLabel="Discard changes"
+          onCancel={() => setShowDiscardProjectConfirm(false)}
+          onConfirm={handleCloseModal}
+        />
       )}
 
       {/* Footer System Status */}
@@ -294,7 +357,7 @@ const App: React.FC = () => {
 
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <Fingerprint size={14} />
-            <span className="text-[10px] font-bold tracking-widest uppercase">VSD Secure Node • v2.0</span>
+            <span className="text-[10px] font-bold tracking-widest uppercase">VSD Project Tracker</span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4">

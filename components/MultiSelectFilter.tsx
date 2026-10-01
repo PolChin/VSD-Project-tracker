@@ -36,14 +36,20 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
     );
 
     const toggleOption = (option: string) => {
-        const newValues = selectedValues.includes(option)
-            ? selectedValues.filter(v => v !== option)
-            : [...selectedValues, option];
-        onChange(newValues);
+        const hasAllOption = options.includes('All');
+        if (hasAllOption && option === 'All') {
+            onChange(selectedValues.includes('All') ? [] : ['All']);
+            return;
+        }
+
+        const currentValues = hasAllOption ? selectedValues.filter(value => value !== 'All') : selectedValues;
+        onChange(currentValues.includes(option)
+            ? currentValues.filter(value => value !== option)
+            : [...currentValues, option]);
     };
 
     const selectAll = () => {
-        onChange([...options]);
+        onChange(options.includes('All') ? ['All'] : [...options]);
     };
 
     const clearAll = () => {
@@ -64,7 +70,7 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
                     <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">
                         {selectedValues.length === 0
                             ? "NONE"
-                            : selectedValues.length === options.length
+                            : selectedValues.includes('All') || selectedValues.length === options.length - (options.includes('All') ? 1 : 0)
                                 ? "ALL SELECTED"
                                 : `${selectedValues.length} SELECTED`}
                     </span>
@@ -154,7 +160,7 @@ const MultiSelectFilter: React.FC<MultiSelectFilterProps> = ({
                     {selectedValues.length > 0 && (
                         <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 rounded-b-2xl">
                             <div className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">
-                                {selectedValues.length} items active
+                                {selectedValues.includes('All') ? options.length - 1 : selectedValues.length} items active
                             </div>
                         </div>
                     )}

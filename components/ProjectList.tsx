@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Project, MasterData } from '../types';
 import {
   Building2,
@@ -22,6 +22,9 @@ import * as XLSX from 'xlsx';
 import pptxgen from 'pptxgenjs';
 import { Reorder, useDragControls } from 'framer-motion';
 import MultiSelectFilter from './MultiSelectFilter';
+import { Link } from 'react-router-dom';
+import { EmptyState, FilterBar, PageHeader, ProgressBar, StatusBadge } from './ui';
+import { useRouteState } from '../utils/useRouteState';
 
 interface ProjectListProps {
   projects: Project[];
@@ -37,20 +40,22 @@ type SortConfig = {
 } | null;
 
 type ColumnKey = 'status' | 'name' | 'ciNo' | 'leader' | 'department' | 'metrics' | 'progress' | 'actions';
+type ProjectListFilters = { department: string[]; leader: string[]; status: string[] };
+type ProjectListState = { searchTerm: string; filters: ProjectListFilters; sortConfig: SortConfig; columnOrder: ColumnKey[] };
+const initialColumnOrder: ColumnKey[] = ['status', 'name', 'ciNo', 'leader', 'department', 'metrics', 'progress', 'actions'];
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNew, onEditProject, onUpdateProgress }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    department: [] as string[],
-    leader: [] as string[],
-    status: [] as string[]
+  const [routeState, setRouteState] = useRouteState<ProjectListState>('projectList', {
+    searchTerm: '',
+    filters: { department: [], leader: [], status: [] },
+    sortConfig: null,
+    columnOrder: initialColumnOrder
   });
-  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
-  
-  // Column Reordering & Resizing State
-  const [columnOrder, setColumnOrder] = useState<ColumnKey[]>([
-    'status', 'name', 'ciNo', 'leader', 'department', 'metrics', 'progress', 'actions'
-  ]);
+  const { searchTerm, filters, sortConfig, columnOrder } = routeState;
+  const setSearchTerm = (value: string) => setRouteState(current => ({ ...current, searchTerm: value }));
+  const setFilters = (value: ProjectListFilters) => setRouteState(current => ({ ...current, filters: value }));
+  const setSortConfig = (value: SortConfig | ((current: SortConfig) => SortConfig)) => setRouteState(current => ({ ...current, sortConfig: typeof value === 'function' ? value(current.sortConfig) : value }));
+  const setColumnOrder = (value: ColumnKey[]) => setRouteState(current => ({ ...current, columnOrder: value }));
 
   const handleSort = (key: SortConfig['key']) => {
     setSortConfig(prevSort => {
@@ -154,7 +159,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
       .filter(key => key !== 'actions')
       .map(key => ({
         text: key.charAt(0).toUpperCase() + key.slice(1).replace('name', 'Project Name').replace('ciNo', 'CI No.'),
-        options: { bold: true, fill: { color: '4F46E5' }, color: 'FFFFFF', align: 'center', fontSize: 12 }
+        options: { bold: true, fill: { color: '4F46E5' }, color: 'FFFFFF', align: 'center' as const, fontSize: 12 }
       }));
 
     const rows = sortedProjects.map(project => 
@@ -171,7 +176,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
             case 'metrics': text = `Tasks: ${project.tasks?.length || 0}`; break;
             case 'progress': text = `${project.progress || 0}%`; break;
           }
-          return { text, options: { fontSize: 10, border: { pt: 1, color: 'E2E8F0' }, align: 'center' } };
+          return { text, options: { fontSize: 10, border: { pt: 1, color: 'E2E8F0' }, align: 'center' as const } };
         })
     );
 
@@ -245,23 +250,15 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
       case 'status':
         return (
           <div key="status" className={`${commonClass} flex items-center`}>
-            <span
-              className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider shadow-sm"
-              style={{
-                backgroundColor: status?.color || '#94a3b8',
-                color: '#ffffff'
-              }}
-            >
-              {project.status || 'Unknown'}
-            </span>
+            <StatusBadge label={project.status || 'Unknown'} color={status?.color} className="shadow-sm" />
           </div>
         );
       case 'name':
         return (
           <div key="name" className={`${commonClass} flex items-start`}>
-            <span className="text-[14px] font-bold text-slate-800 dark:text-white leading-snug whitespace-normal">
+            <Link to={`/projects/${encodeURIComponent(project.id)}`} className="text-[14px] font-bold text-slate-800 dark:text-white leading-snug whitespace-normal hover:text-indigo-600 hover:underline dark:hover:text-indigo-400">
               {project.name || 'Untitled Project'}
-            </span>
+            </Link>
           </div>
         );
       case 'ciNo':
@@ -314,12 +311,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
             <div className="flex justify-between items-center text-[12px] font-bold text-slate-700 dark:text-slate-200">
               <span>{project.progress}%</span>
             </div>
-            <div className="h-1 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-              <div
-                className="h-full rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${project.progress || 0}%`, backgroundColor: status?.color || '#6366f1' }}
-              />
-            </div>
+            <ProgressBar value={project.progress} color={status?.color || '#6366f1'} />
           </div>
         );
       case 'actions':
@@ -349,17 +341,9 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
 
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl flex flex-col xl:flex-row justify-between items-center gap-4 shadow-sm border border-slate-200 dark:border-slate-800 relative z-50">
 
-        <div className="flex items-center gap-3 w-full xl:w-auto">
-          <div className="p-2 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex-shrink-0">
-            <Layers size={24} className="text-indigo-600 dark:text-indigo-400" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Project Portfolio</h2>
-            <p className="text-xs text-slate-500 font-medium tracking-wide uppercase">Showing {sortedProjects.length} nodes</p>
-          </div>
-        </div>
+        <PageHeader icon={Layers} title="Project Portfolio" description={`Showing ${sortedProjects.length} projects`} />
 
-        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto xl:justify-end">
+        <FilterBar>
 
           <div className="relative flex-grow max-w-sm">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -419,7 +403,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
               <span>PPT</span>
             </button>
           </div>
-        </div>
+        </FilterBar>
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex-grow overflow-hidden relative z-10 flex flex-col mb-2">
@@ -458,12 +442,7 @@ const ProjectList: React.FC<ProjectListProps> = ({ projects, masterData, onAddNe
               })}
 
               {sortedProjects.length === 0 && (
-                <div className="py-24 flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-6">
-                    <Search size={32} className="text-slate-300 dark:text-slate-600" />
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-500">No project nodes found</h3>
-                </div>
+                <EmptyState icon={Search} title="No projects found" description="Try changing your search or filters." />
               )}
             </div>
           </div>

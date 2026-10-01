@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { db, collection, query, where, getDocs, doc, setDoc, updateDoc } from '../firebase';
+import { db, collection, query, where, getDocs, doc, writeBatch, serverTimestamp } from '../firebase';
 import { Project, WeeklyUpdate, MasterData } from '../types';
 import { X, Save, Clock, AlertCircle, CheckCircle2, FileText, Calendar } from 'lucide-react';
 import { getCurrentWeekId, getPreviousWeekId, getNextWeekId, weekIdToDateRange } from '../utils/dateUtils';
+import ConfirmDialog from './ConfirmDialog';
 
 interface ProgressUpdateModalProps {
   project: Project;
@@ -15,7 +16,10 @@ interface ProgressUpdateModalProps {
 const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, initialWeekId, masterData, onClose, onSuccess }) => {
   const [history, setHistory] = useState<WeeklyUpdate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [historyLoadFailed, setHistoryLoadFailed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
 
   const latestWeekId = getCurrentWeekId();
   const [selectedWeekId, setSelectedWeekId] = useState<string>(initialWeekId || latestWeekId);
@@ -31,18 +35,30 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
   useEffect(() => {
     const fetchHistory = async () => {
       setLoading(true);
+      setHistoryLoaded(false);
+      setHistoryLoadFailed(false);
       try {
         const q = query(
           collection(db, 'weekly_updates'),
           where('projectId', '==', project.id)
         );
         const snap = await getDocs(q);
-        const data = snap.docs.map(d => ({ ...d.data(), id: d.id } as WeeklyUpdate));
+        const data = snap.docs.map(d => {
+          const record = d.data();
+          const updatedAt = typeof record.updatedAt?.toDate === 'function'
+            ? record.updatedAt.toDate().toISOString()
+            : record.updatedAt instanceof Date
+              ? record.updatedAt.toISOString()
+              : String(record.updatedAt || '');
+          return { ...record, id: d.id, updatedAt } as WeeklyUpdate;
+        });
         // Sort client-side by updatedAt descending
         data.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         setHistory(data);
+        setHistoryLoaded(true);
       } catch (err) {
         console.error("Failed to fetch history:", err);
+        setHistoryLoadFailed(true);
       } finally {
         setLoading(false);
       }
@@ -61,6 +77,21 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
     });
     return map;
   }, [history]);
+  const existingDataForWeek = updatesByWeek[selectedWeekId];
+  const baselineForm = existingDataForWeek ? {
+    progress: existingDataForWeek.progress,
+    status: existingDataForWeek.status,
+    summary: existingDataForWeek.summary || '',
+    issues: existingDataForWeek.issues || '',
+    nextSteps: existingDataForWeek.nextSteps || ''
+  } : {
+    progress: project.progress,
+    status: project.status,
+    summary: '',
+    issues: '',
+    nextSteps: ''
+  };
+  const hasUnsavedChanges = JSON.stringify(form) !== JSON.stringify(baselineForm);
 
   // When user selects a different week, auto-populate form with existing data if available
   useEffect(() => {
@@ -87,22 +118,20 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || !historyLoaded) return;
     setIsSaving(true);
     try {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const HH = String(now.getHours()).padStart(2, '0');
-      const MM = String(now.getMinutes()).padStart(2, '0');
-
-      const projectCode = (project.projectId || project.id).replace(/\s+/g, '_');
-      const docId = `${projectCode}_PU_${yyyy}${mm}${dd}_${HH}${MM}`;
-
       const weekId = selectedWeekId;
+      const selectedWeekStart = weekIdToDateRange(weekId).start.getTime();
+      const latestReportedWeekStart = history.reduce((latest, item) => {
+        if (!item.weekId) return latest;
+        return Math.max(latest, weekIdToDateRange(item.weekId).start.getTime());
+      }, Number.NEGATIVE_INFINITY);
+      const updateRef = doc(collection(db, 'weekly_updates'));
+      const timestamp = serverTimestamp();
 
-      const updateData: WeeklyUpdate = {
-        id: docId,
+      const updateData = {
+        id: updateRef.id,
         projectId: project.id,
         weekId,
         progress: form.progress,
@@ -110,18 +139,19 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
         summary: form.summary,
         issues: form.issues,
         nextSteps: form.nextSteps,
-        updatedAt: now.toISOString()
+        updatedAt: timestamp
       };
 
-      // Save the weekly update record
-      await setDoc(doc(db, 'weekly_updates', docId), updateData);
-
-      // Always update project progress & status directly
-      await updateDoc(doc(db, 'projects', project.id), {
-        progress: form.progress,
-        status: form.status,
-        updatedAt: now
-      });
+      const batch = writeBatch(db);
+      batch.set(updateRef, updateData);
+      if (selectedWeekStart >= latestReportedWeekStart) {
+        batch.set(doc(db, 'projects', project.id), {
+          progress: form.progress,
+          status: form.status,
+          updatedAt: timestamp
+        }, { merge: true });
+      }
+      await batch.commit();
 
       if (onSuccess) {
         onSuccess();
@@ -135,17 +165,14 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
     }
   };
 
-  const handleBackdropClick = () => {
-    if (window.confirm("You have unsaved changes. Are you sure you want to close this window?\n\n(Click OK to exit without saving, or Cancel to continue editing.)")) {
-      onClose();
-    }
+  const handleCloseRequest = () => {
+    if (hasUnsavedChanges) setShowUnsavedConfirm(true);
+    else onClose();
   };
-
-  const existingDataForWeek = updatesByWeek[selectedWeekId];
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity" onClick={handleBackdropClick} />
+      <div className="absolute inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-md transition-opacity" onClick={handleCloseRequest} />
       <div className="relative w-full max-w-5xl h-[85vh] sm:h-[90vh] max-h-[95vh] bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
         
         {/* Left Side: Form */}
@@ -155,7 +182,7 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
                <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">Update Progress</h3>
                <p className="text-[11px] uppercase font-black tracking-widest text-slate-500 mt-1">{project.name}</p>
             </div>
-            <button type="button" onClick={onClose} className="md:hidden p-2 bg-slate-200 dark:bg-slate-800 rounded-full text-slate-500">
+              <button type="button" onClick={handleCloseRequest} className="md:hidden p-2 bg-slate-200 dark:bg-slate-800 rounded-full text-slate-500">
               <X size={18} />
             </button>
           </div>
@@ -235,9 +262,10 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
           </div>
 
           <div className="p-8 pt-4 border-t border-slate-200 dark:border-slate-800 flex-shrink-0 bg-white/50 dark:bg-slate-900/50">
-            <button type="submit" disabled={isSaving} className="w-full flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-500/30 transition-all disabled:opacity-50">
-              <Save size={18} /> {isSaving ? 'Saving...' : existingDataForWeek ? 'Save Updated Record' : 'Post Weekly Update'}
+            <button type="submit" disabled={isSaving || loading || historyLoadFailed} className="w-full flex justify-center items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-500/30 transition-all disabled:opacity-50">
+              <Save size={18} /> {isSaving ? 'Saving...' : loading ? 'Loading history...' : existingDataForWeek ? 'Save Updated Record' : 'Post Weekly Update'}
             </button>
+            {historyLoadFailed && <p className="mt-2 text-center text-xs text-rose-600">Update history could not be loaded. Close and reopen this form before saving.</p>}
           </div>
         </form>
 
@@ -250,7 +278,7 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
                 {loading ? 'Loading...' : `${Object.keys(updatesByWeek).length} week${Object.keys(updatesByWeek).length !== 1 ? 's' : ''} recorded`}
               </p>
             </div>
-            <button onClick={onClose} className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 transition-colors">
+            <button onClick={handleCloseRequest} className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-500 transition-colors">
               <X size={18} />
             </button>
           </div>
@@ -318,6 +346,15 @@ const ProgressUpdateModal: React.FC<ProgressUpdateModalProps> = ({ project, init
           </div>
         </div>
       </div>
+      {showUnsavedConfirm && (
+        <ConfirmDialog
+          title="Discard unsaved changes?"
+          message="Your weekly update will be lost if you close this form."
+          confirmLabel="Discard changes"
+          onCancel={() => setShowUnsavedConfirm(false)}
+          onConfirm={onClose}
+        />
+      )}
     </div>
   );
 };

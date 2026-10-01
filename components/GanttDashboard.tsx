@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { Project, Task, MasterData, Milestone } from '../types';
 import { getWeekId, weekIdToDateRange, getNextWeekId } from '../utils/dateUtils';
 import {
@@ -24,30 +24,49 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import MultiSelectFilter from './MultiSelectFilter';
+import { useRouteState } from '../utils/useRouteState';
 
 interface GanttDashboardProps {
   projects: Project[];
   masterData: MasterData;
+  onOpenProject: (project: Project) => void;
 }
 
 type ViewMode = 'week' | 'month' | 'quarter';
+type TimelineGroupBy = 'none' | 'leader' | 'department';
+type TimelineFilters = { department: string[]; leader: string[]; status: string[] };
+interface TimelineState {
+  viewMode: ViewMode;
+  rangeYears: 1 | 2 | 4;
+  groupBy: TimelineGroupBy;
+  zoomScale: number;
+  expandedProjects: Record<string, boolean>;
+  filters: TimelineFilters;
+}
 
-const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [zoomScale, setZoomScale] = useState<number>(1);
-  const [expandedProjects, setExpandedProjects] = useState<Record<string, boolean>>({});
-  const [filters, setFilters] = useState({
-    department: [] as string[],
-    leader: [] as string[],
-    status: [] as string[]
+const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData, onOpenProject }) => {
+  const [timelineState, setTimelineState] = useRouteState<TimelineState>('timeline', {
+    viewMode: 'week',
+    rangeYears: 4,
+    groupBy: 'none',
+    zoomScale: 1,
+    expandedProjects: {},
+    filters: { department: [], leader: [], status: [] }
   });
+  const { viewMode, rangeYears, groupBy, zoomScale, expandedProjects, filters } = timelineState;
+  const setViewMode = (value: ViewMode) => setTimelineState(state => ({ ...state, viewMode: value }));
+  const setRangeYears = (value: 1 | 2 | 4) => setTimelineState(state => ({ ...state, rangeYears: value }));
+  const setGroupBy = (value: TimelineGroupBy) => setTimelineState(state => ({ ...state, groupBy: value }));
+  const setZoomScale = (value: (current: number) => number) => setTimelineState(state => ({ ...state, zoomScale: value(state.zoomScale) }));
+  const setExpandedProjects = (value: Record<string, boolean> | ((current: Record<string, boolean>) => Record<string, boolean>)) => setTimelineState(state => ({ ...state, expandedProjects: typeof value === 'function' ? value(state.expandedProjects) : value }));
+  const setFilters = (value: TimelineFilters) => setTimelineState(state => ({ ...state, filters: value }));
 
   const mainScrollContainerRef = useRef<HTMLDivElement>(null);
 
   const now = new Date();
   const currentYear = now.getFullYear();
-  const rangeStartYear = currentYear - 1;
-  const rangeEndYear = currentYear + 2;
+  const rangeStartYear = rangeYears === 4 ? currentYear - 1 : currentYear;
+  const rangeEndYear = rangeStartYear + rangeYears - 1;
 
   const startDate = new Date(`${rangeStartYear}-01-01`).getTime();
   const endDate = new Date(`${rangeEndYear}-12-31`).getTime();
@@ -111,6 +130,18 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
       return matchDept && matchLeader && matchStatus;
     });
   }, [projects, filters]);
+
+  const timelineGroups = useMemo(() => {
+    if (groupBy === 'none') return [{ label: '', projects: filteredProjects }];
+    const groups = new Map<string, Project[]>();
+    filteredProjects.forEach(project => {
+      const label = groupBy === 'leader' ? project.leader || 'Unassigned' : project.department || 'Unassigned';
+      groups.set(label, [...(groups.get(label) || []), project]);
+    });
+    return [...groups.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([label, groupProjects]) => ({ label, projects: groupProjects }));
+  }, [filteredProjects, groupBy]);
 
   const years = Array.from({ length: rangeEndYear - rangeStartYear + 1 }, (_, i) => rangeStartYear + i);
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -212,11 +243,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
           </div>
           <div>
              <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
-               Operational Timeline
-               <span className="flex items-center gap-1 text-[9px] bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-full font-black uppercase shadow-sm">
-                  <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse blur-[1px]" />
-                  Live
-               </span>
+               Project Timeline
              </h3>
              <p className="text-xs text-slate-500 font-medium tracking-wide">Project Scheduling & Milestones</p>
           </div>
@@ -260,6 +287,22 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
           </div>
 
           <div className="flex items-center gap-2">
+             <label className="flex items-center gap-2 text-[10px] font-semibold text-slate-500">
+               Group
+               <select value={groupBy} onChange={event => setGroupBy(event.target.value as typeof groupBy)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                 <option value="none">None</option>
+                 <option value="leader">Leader</option>
+                 <option value="department">Department</option>
+               </select>
+             </label>
+             <label className="flex items-center gap-2 text-[10px] font-semibold text-slate-500">
+               Range
+               <select value={rangeYears} onChange={event => setRangeYears(Number(event.target.value) as 1 | 2 | 4)} className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                 <option value={1}>1 year</option>
+                 <option value={2}>2 years</option>
+                 <option value={4}>4 years</option>
+               </select>
+             </label>
              
              {/* Zoom Controls */}
              <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
@@ -309,7 +352,7 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
         </div>
       </div>
 
-        <div className="relative border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-[600px] flex flex-col shadow-inner">
+        <div className="relative border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden bg-white dark:bg-slate-900 h-[72vh] min-h-[360px] max-h-[900px] flex flex-col shadow-inner">
           <div
             ref={mainScrollContainerRef}
             className="w-full flex-grow overflow-auto relative"
@@ -334,7 +377,17 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
               />
 
               <div className="flex flex-col relative z-10">
-                {filteredProjects.map((project) => {
+                {timelineGroups.map(group => (
+                  <React.Fragment key={group.label || 'all-projects'}>
+                    {group.label && (
+                      <div className="flex border-b border-slate-200 bg-slate-100/80 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:border-slate-800 dark:bg-slate-800/80 dark:text-slate-300">
+                        <div className="sticky left-0 z-[145] flex flex-shrink-0 items-center border-r border-slate-200 bg-slate-100/95 px-4 dark:border-slate-800 dark:bg-slate-800/95" style={{ width: `${SIDEBAR_WIDTH}px`, height: '32px' }}>
+                          {group.label} · {group.projects.length}
+                        </div>
+                        <div className="flex-grow" />
+                      </div>
+                    )}
+                    {group.projects.map((project) => {
                   const projectStatus = masterData.statuses.find(s => s.name === project.status);
                   const taskDates = project.tasks?.flatMap(t => [new Date(t.startDate).getTime(), new Date(t.endDate).getTime()]) || [];
                   const pStart = taskDates.length > 0 ? Math.min(...taskDates) : startDate;
@@ -360,7 +413,9 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate leading-tight">{project.name}</span>
+                            <button type="button" onClick={event => { event.stopPropagation(); onOpenProject(project); }} className="truncate text-left text-[11px] font-bold leading-tight text-slate-700 hover:text-indigo-600 hover:underline dark:text-slate-200 dark:hover:text-indigo-400" title="Open project details">
+                              {project.name}
+                            </button>
                             <span className="text-[8px] uppercase font-black text-indigo-500 dark:text-indigo-400 mt-0.5">
                               {project.leader} {project.ciNo ? `• CI: ${project.ciNo}` : ''}
                             </span>
@@ -443,9 +498,11 @@ const GanttDashboard: React.FC<GanttDashboardProps> = ({ projects, masterData })
                           </div>
                         );
                       })}
-                    </React.Fragment>
-                  );
-                })}
+                      </React.Fragment>
+                    );
+                    })}
+                  </React.Fragment>
+                ))}
               </div>
             </div>
           </div>

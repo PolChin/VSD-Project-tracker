@@ -1,8 +1,6 @@
 
-// Add where and limit to the list of firestore imports and exports to support querying in components.
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-// Fix: Added 'limit' to the imports from the Firestore module.
-import { 
+import { initializeApp } from 'firebase/app';
+import {
   getFirestore, 
   collection, 
   query, 
@@ -13,11 +11,12 @@ import {
   serverTimestamp,
   getDocs,
   where,
+  documentId,
   limit,
   setDoc,
   updateDoc,
-  deleteDoc
-} from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  runTransaction
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyD7jfkjX28p7LxWtG6w_cPQ9TlU7TUtrC0",
@@ -31,8 +30,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Fix: Exported 'limit' to satisfy dependencies in ProjectForm.tsx and other components.
-export { 
+export {
   db, 
   collection, 
   query, 
@@ -43,8 +41,9 @@ export {
   serverTimestamp,
   getDocs,
   where,
+  documentId,
   limit,
   setDoc,
   updateDoc,
-  deleteDoc
+  runTransaction
 };
